@@ -339,7 +339,7 @@ class MenuScene extends Phaser.Scene {
         this.add.tileSprite(0, 0, width, height, "bg").setOrigin(0);
         
         // Game title
-        this.add.text(width / 2, height / 4, 'SHMUP PARTY', {
+        this.add.text(width / 2, height / 4, `Sh'M↑ Party`, {
             fontFamily: 'Arial',
             fontSize: '64px',
             color: '#ffffff',
