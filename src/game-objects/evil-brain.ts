@@ -194,7 +194,7 @@ export default class EvilBrain extends Phaser.GameObjects.Container {
         // WEAPON
         this.weapon = new EvilBrainBullet(this, scene);
         
-        scene.physics.world.enable(this);
+        scene.physics.add.existing(this);
         this.body.setSize(Math.max(top.width, bottom.width), top.height + bottom.height);
         this.setScale(4);
         this.setDepth(5);

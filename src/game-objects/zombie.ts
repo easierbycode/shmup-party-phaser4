@@ -1,8 +1,8 @@
 
-import BaseEntity from "./base-entity";
+import Enemy from "./enemy";
 
 
-export default class Zombie extends BaseEntity {
+export default class Zombie extends Enemy {
 
     _speed      = 1.5;
     health;

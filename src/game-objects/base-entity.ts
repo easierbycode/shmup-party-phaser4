@@ -47,7 +47,12 @@ export default class BaseEntity extends Phaser.Physics.Arcade.Sprite {
             () => { bloodSplatters.killAndHide( bloodSplatter ) }
         );
         bloodSplatter.play( 'default' );
+        this.onDestroy();
         this.destroy();
+    }
+
+    onDestroy() {
+        // override this in child classes
     }
 
     reset() {
