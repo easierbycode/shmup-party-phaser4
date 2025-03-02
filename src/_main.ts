@@ -388,6 +388,9 @@ class MenuScene extends Phaser.Scene {
             this.plugins.installScenePlugin('WeaponPlugin', WeaponPlugin, 'weapons', this);
         }
         
+        // Create animations needed for the attract mode
+        this.createAttractModeAnimations();
+        
         // Create automated demo player
         this.createDemoPlayer();
         
@@ -398,19 +401,8 @@ class MenuScene extends Phaser.Scene {
         // Start spawning enemies
         this.spawnAttractModeEnemies();
         
-        // Set up collisions between bullets and enemies
-        this.physics.add.overlap(this.bullets, this.baddies, (bullet, baddie) => {
-            if (!baddie.visible || !bullet.visible || baddie.blinking) return;
-            
-            if (typeof bullet.damage === 'function') {
-                bullet.damage(bullet, baddie);
-            } else {
-                bullet.setVisible(false);
-                bullet.setActive(false);
-            }
-            
-            baddie.damage(baddie, { damagePoints: bullet.damagePoints || 10 });
-        });
+        // REMOVE the standard collision detection from here to avoid conflicts
+        // We'll handle all collisions in the update method
         
         // Set up collisions between enemy bullets and player
         this.physics.add.overlap(this.enemyBullets, this.players, (bullet, player) => {
@@ -418,6 +410,29 @@ class MenuScene extends Phaser.Scene {
             bullet.setVisible(false);
             bullet.setActive(false);
         });
+    }
+    
+    // Add a new method to create animations
+    createAttractModeAnimations() {
+        // Check if animations already exist
+        if (!this.anims.exists('blood-splat.default')) {
+            this.anims.create({
+                key: 'blood-splat.default',
+                frames: this.anims.generateFrameNumbers('blood-splat', { start: 0, end: 4 }),
+                frameRate: 12,
+                repeat: 0
+            });
+        }
+        
+        // Wrecking ball animation
+        if (!this.anims.exists('wreckingBall.default')) {
+            this.anims.create({
+                key: 'wreckingBall.default',
+                frames: this.anims.generateFrameNumbers('wreckingBall', { start: 0, end: 5 }),
+                frameRate: 12,
+                repeat: -1
+            });
+        }
     }
     
     createDemoPlayer() {
@@ -610,6 +625,43 @@ class MenuScene extends Phaser.Scene {
                 }
             }
         });
+        
+        // Process player bullet collisions with enemies
+        if (this.demoPlayer && this.demoPlayer.active) {
+            // Loop through all the player's weapons to check their bullets
+            this.demoPlayer.weapons.forEach(weapon => {
+                if (weapon.bullets) {
+                    const activeBullets = weapon.bullets.getChildren().filter(bullet => 
+                        bullet.active && bullet.visible);
+                    
+                    if (activeBullets.length > 0) {
+                        this.physics.overlap(activeBullets, this.baddies, (bullet, baddie) => {
+                            if (!baddie.visible || baddie.blinking) return;
+                            
+                            // Handle bullet behavior
+                            if (typeof bullet.damage === 'function') {
+                                bullet.damage(bullet, baddie);
+                            } else {
+                                bullet.setVisible(false);
+                                bullet.setActive(false);
+                            }
+                            
+                            // Create blood splat effect
+                            const bloodSplat = this.add.sprite(baddie.x, baddie.y, 'blood-splat');
+                            bloodSplat.setDepth(baddie.depth - 1);
+                            bloodSplat.play('blood-splat.default');
+                            bloodSplat.once('animationcomplete', () => {
+                                bloodSplat.destroy();
+                            });
+                            
+                            // FORCE DESTROY enemy - don't rely on damage method
+                            // for attract mode, we just want visual effect
+                            baddie.destroy();
+                        });
+                    }
+                }
+            });
+        }
         
         // Create occasional powerups for visual interest
         if (Math.random() < 0.001) {
