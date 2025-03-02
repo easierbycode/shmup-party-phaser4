@@ -689,6 +689,138 @@ class MenuScene extends Phaser.Scene {
             }
         }
     }
+
+    // This method would normally show a UI for perk selection
+    // In demo mode, it just selects a random perk after a delay
+    showPerkSelection(player) {
+        console.log('DEMO: Showing perk selection');
+        // Create a perk menu panel that covers most of the screen
+        const menuPanel = this.add.rectangle(
+            config.width / 2,
+            config.height / 2,
+            600,
+            400,
+            0x000000,
+            0.8
+        ).setOrigin(0.5);
+        
+        // Add a title
+        const title = this.add.text(
+            config.width / 2,
+            menuPanel.y - 150,
+            'LEVEL UP! SELECT A PERK',
+            {
+                fontSize: '32px',
+                fontFamily: 'Arial',
+                color: '#ffffff'
+            }
+        ).setOrigin(0.5);
+        
+        // Create selectable perk buttons
+        const perkOptions = player.availablePerks.slice(0, 3); // Show only 3 random perks
+        const perkButtons = [];
+        const buttonHeight = 80;
+        const buttonSpacing = 20;
+        const startY = menuPanel.y - buttonHeight - buttonSpacing;
+        
+        perkOptions.forEach((perk, index) => {
+            // Create button background
+            const button = this.add.rectangle(
+                config.width / 2,
+                startY + (buttonHeight + buttonSpacing) * index,
+                500,
+                buttonHeight,
+                0x3366cc,
+                1
+            ).setOrigin(0.5);
+            
+            // Add perk name and description
+            let description;
+            switch(perk) {
+                case 'damage': 
+                    description = 'Increase damage by 25%';
+                    break;
+                case 'speed': 
+                    description = 'Increase movement speed by 15%';
+                    break;
+                case 'fireRate': 
+                    description = 'Increase fire rate by 15%';
+                    break;
+                case 'health': 
+                    description = 'Gain an extra health point';
+                    break;
+                case 'shield': 
+                    description = 'Activate temporary shield';
+                    break;
+                default:
+                    description = 'Mystery perk';
+            }
+            
+            const perkName = this.add.text(
+                button.x - 220,
+                button.y - 15,
+                perk.toUpperCase(),
+                {
+                    fontSize: '24px',
+                    fontFamily: 'Arial',
+                    color: '#ffffff',
+                    fontWeight: 'bold'
+                }
+            ).setOrigin(0, 0.5);
+            
+            const perkDesc = this.add.text(
+                perkName.x,
+                button.y + 15,
+                description,
+                {
+                    fontSize: '18px',
+                    fontFamily: 'Arial',
+                    color: '#ffffff'
+                }
+            ).setOrigin(0, 0.5);
+            
+            perkButtons.push({
+                background: button,
+                name: perkName,
+                description: perkDesc,
+                perk: perk
+            });
+        });
+        
+        // Group all UI elements for easy cleanup
+        const uiElements = [
+            menuPanel, 
+            title, 
+            ...perkButtons.map(btn => [btn.background, btn.name, btn.description]).flat()
+        ];
+        
+        // In demo mode, select a random perk after a delay
+        if (player.isDemoMode) {
+            const selectedIndex = Phaser.Math.Between(0, perkButtons.length - 1);
+            const selectedButton = perkButtons[selectedIndex];
+            
+            // Highlight button after a short delay (simulate thinking)
+            this.time.delayedCall(800, () => {
+                // Highlight the selected button
+                selectedButton.background.setFillStyle(0xffcc00);
+                
+                // Apply the perk and close menu after another short delay
+                this.time.delayedCall(600, () => {
+                    player.applyPerk(selectedButton.perk);
+                    
+                    // Fade out and destroy the UI
+                    this.tweens.add({
+                        targets: uiElements,
+                        alpha: 0,
+                        duration: 500,
+                        onComplete: () => {
+                            uiElements.forEach(element => element.destroy());
+                        }
+                    });
+                });
+            });
+        }
+    }
 }
 
 class GameHUD extends Phaser.Scene {

@@ -83,6 +83,7 @@ export default class DemoScene extends Phaser.Scene {
     // This method would normally show a UI for perk selection
     // In demo mode, it just selects a random perk after a delay
     showPerkSelection(player) {
+        console.log('DEMO: Showing perk selection');
         // Create a perk menu panel that covers most of the screen
         const menuPanel = this.add.rectangle(
             config.width / 2,
