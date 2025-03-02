@@ -1077,9 +1077,6 @@ class GameScene extends Phaser.Scene {
     }
     
     update(time, delta) {
-        // Update background (parallax effect)
-        this.bg.tilePositionX += 0.5;
-        
         // Get active players
         const activePlayers = this.players.getMatching('active', true);
         if (activePlayers.length) {
