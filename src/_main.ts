@@ -494,9 +494,9 @@ class PreloadScene extends Phaser.Scene {
         // Load images
         this.load.image("bg", "scorched-earth.png");
         this.load.image("player", "player.png");
-        this.load.image("enemy", "monster-1.png");
-        this.load.image("enemy-fast", "monster-2.png");
-        this.load.image("healthpack", "health-pack.png");
+        // this.load.image("enemy", "monster-1.png");
+        // this.load.image("enemy-fast", "monster-2.png");
+        this.load.image("healthpack", "powerup-medikit.png");
         
         // Load powerup images
         this.load.image("giantMode", "powerup-weapon-boost.png");
@@ -557,7 +557,6 @@ class PreloadScene extends Phaser.Scene {
         });
         
         // UI elements
-        this.load.image("button", "button.png");
         this.load.image("perk-icon-speed", "perk-speed.png");
         this.load.image("perk-icon-fireRate", "perk-fire-rate.png");
         this.load.image("perk-icon-damage", "perk-damage.png");
