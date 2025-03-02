@@ -1,4 +1,3 @@
-
 import BaseEntity from './game-objects/base-entity.ts';
 import Zombie from './game-objects/zombie.ts';
 import Alien from './game-objects/alien.ts';
@@ -338,6 +337,9 @@ class MenuScene extends Phaser.Scene {
         // Background
         this.add.tileSprite(0, 0, width, height, "bg").setOrigin(0);
         
+        // Initialize attract mode (before UI elements so it stays in background)
+        this.setupAttractMode();
+        
         // Game title
         this.add.text(width / 2, height / 4, `Sh'M↑ Party`, {
             fontFamily: 'Arial',
@@ -371,6 +373,195 @@ class MenuScene extends Phaser.Scene {
         });
     }
     
+    setupAttractMode() {
+        // Create game groups that enemies might need
+        this.baddies = this.add.group();
+        this.bullets = this.physics.add.group();
+        this.enemyBullets = this.physics.add.group(); // Enemy bullets group
+        this.players = this.add.group(); // Group for players (targets)
+        
+        // Add any other collections/properties that enemies might be looking for
+        this.targets = this.add.group(); // Target group that aliens might be searching
+        
+        // Create plugins if needed
+        if (!this.weapons) {
+            this.plugins.installScenePlugin('WeaponPlugin', WeaponPlugin, 'weapons', this);
+        }
+        
+        // Create automated demo player
+        this.createDemoPlayer();
+        
+        // Add player to players/targets group
+        this.players.add(this.demoPlayer);
+        this.targets.add(this.demoPlayer);
+        
+        // Start spawning enemies
+        this.spawnAttractModeEnemies();
+        
+        // Set up collisions between bullets and enemies
+        this.physics.add.overlap(this.bullets, this.baddies, (bullet, baddie) => {
+            if (!baddie.visible || !bullet.visible || baddie.blinking) return;
+            
+            if (typeof bullet.damage === 'function') {
+                bullet.damage(bullet, baddie);
+            } else {
+                bullet.setVisible(false);
+                bullet.setActive(false);
+            }
+            
+            baddie.damage(baddie, { damagePoints: bullet.damagePoints || 10 });
+        });
+        
+        // Set up collisions between enemy bullets and player
+        this.physics.add.overlap(this.enemyBullets, this.players, (bullet, player) => {
+            // In attract mode, let's make the player invincible
+            bullet.setVisible(false);
+            bullet.setActive(false);
+        });
+    }
+    
+    createDemoPlayer() {
+        // Create a fake gamepad object with basic functionality
+        const fakeGamepad = {
+            vibration: null,
+            left: false,
+            right: false,
+            up: false,
+            down: false,
+            leftStick: { x: 0, y: 0 },
+            rightStick: { x: 0, y: 0 },
+            buttons: [{ pressed: false }, { pressed: false }],
+            // Add missing event emitter methods
+            on: () => {}, // No-op function to prevent errors
+            off: () => {},
+            once: () => {},
+            emit: () => {}
+        };
+        
+        // Create the demo player with slightly lower depth so UI appears above it
+        this.demoPlayer = new Player(fakeGamepad, this, 
+                                    this.cameras.main.width / 2,
+                                    this.cameras.main.height / 2 + 200);
+        this.demoPlayer.setDepth(5);
+        
+        // Make the demo player automatically move and shoot
+        this.time.addEvent({
+            delay: 100,
+            callback: this.updateDemoPlayerInput,
+            callbackScope: this,
+            loop: true
+        });
+    }
+    
+    updateDemoPlayerInput() {
+        // Simulate joystick movement for demo player
+        const gamepad = this.demoPlayer.gamepad;
+        
+        // Random movement patterns
+        if (Math.random() < 0.1) {
+            gamepad.leftStick.x = Phaser.Math.FloatBetween(-0.8, 0.8);
+            gamepad.leftStick.y = Phaser.Math.FloatBetween(-0.8, 0.8);
+        }
+        
+        // Always aim toward nearest enemy
+        const nearestEnemy = this.findNearestEnemy();
+        if (nearestEnemy) {
+            // Calculate angle to enemy
+            const angle = Phaser.Math.Angle.Between(
+                this.demoPlayer.x, this.demoPlayer.y,
+                nearestEnemy.x, nearestEnemy.y
+            );
+            
+            // Set right stick direction (for aiming and shooting)
+            gamepad.rightStick.x = Math.cos(angle);
+            gamepad.rightStick.y = Math.sin(angle);
+        } else {
+            // No enemies, aim in different directions
+            const time = this.time.now / 1000;
+            gamepad.rightStick.x = Math.cos(time);
+            gamepad.rightStick.y = Math.sin(time);
+        }
+    }
+    
+    findNearestEnemy() {
+        let nearestEnemy = null;
+        let minDistance = Number.MAX_VALUE;
+        
+        this.baddies.getChildren().forEach(baddie => {
+            if (baddie.active) {
+                const distance = Phaser.Math.Distance.Between(
+                    this.demoPlayer.x, this.demoPlayer.y,
+                    baddie.x, baddie.y
+                );
+                
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearestEnemy = baddie;
+                }
+            }
+        });
+        
+        return nearestEnemy;
+    }
+    
+    spawnAttractModeEnemies() {
+        // Periodically spawn waves of enemies
+        this.time.addEvent({
+            delay: 5000,
+            callback: this.spawnEnemyWave,
+            callbackScope: this,
+            loop: true
+        });
+        
+        // Initial spawn
+        this.spawnEnemyWave();
+    }
+    
+    spawnEnemyWave() {
+        // Spawn a small wave of enemies
+        const count = Phaser.Math.Between(3, 8);
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+        
+        for (let i = 0; i < count; i++) {
+            // Determine spawn position (off-screen)
+            let x, y;
+            const side = Phaser.Math.Between(0, 3);
+            
+            switch(side) {
+                case 0: // top
+                    x = Phaser.Math.Between(0, width);
+                    y = -50;
+                    break;
+                case 1: // right
+                    x = width + 50;
+                    y = Phaser.Math.Between(0, height);
+                    break;
+                case 2: // bottom
+                    x = Phaser.Math.Between(0, width);
+                    y = height + 50;
+                    break;
+                case 3: // left
+                    x = -50;
+                    y = Phaser.Math.Between(0, height);
+                    break;
+            }
+            
+            // Create either zombie or alien
+            if (Math.random() < 0.5) {
+                const zombie = new Zombie(this, x, y);
+                zombie.setDepth(3);
+                this.baddies.add(zombie);
+            } else {
+                const alien = new Alien(this, x, y);
+                alien.target = this.demoPlayer; // Ensure alien has a target
+                alien.moveSpeed = 80; // Slower for attract mode
+                alien.setDepth(3);
+                this.baddies.add(alien);
+            }
+        }
+    }
+    
     createButton(x, y, text, callback) {
         const button = this.add.text(x, y, text, {
             fontFamily: 'Arial',
@@ -385,6 +576,8 @@ class MenuScene extends Phaser.Scene {
             }
         }).setOrigin(0.5);
         
+        // Set higher depth to ensure buttons appear above attract mode
+        button.setDepth(20);
         button.setInteractive({ useHandCursor: true })
             .on('pointerover', () => button.setTint(0xff0000))
             .on('pointerout', () => button.clearTint())
@@ -394,7 +587,46 @@ class MenuScene extends Phaser.Scene {
     }
     
     update() {
-        // Check for gamepad input
+        // Update enemy targeting toward player
+        this.baddies.getChildren().forEach(enemy => {
+            if (enemy.active && this.demoPlayer.active) {
+                const angle = Phaser.Math.Angle.Between(
+                    enemy.x, enemy.y,
+                    this.demoPlayer.x, this.demoPlayer.y
+                );
+                
+                // Move toward player
+                const speed = enemy.moveSpeed || 100;
+                enemy.body.velocity.x = Math.cos(angle) * speed;
+                enemy.body.velocity.y = Math.sin(angle) * speed;
+                
+                // Set rotation to face player
+                enemy.rotation = angle;
+                
+                // Clean up off-screen enemies
+                if (enemy.x < -100 || enemy.x > this.cameras.main.width + 100 ||
+                    enemy.y < -100 || enemy.y > this.cameras.main.height + 100) {
+                    enemy.destroy();
+                }
+            }
+        });
+        
+        // Create occasional powerups for visual interest
+        if (Math.random() < 0.001) {
+            const powerupTypes = ["giantMode", "fireblast", "speed"];
+            const randomType = Phaser.Utils.Array.GetRandom(powerupTypes);
+            
+            const x = Phaser.Math.Between(100, this.cameras.main.width - 100);
+            const y = Phaser.Math.Between(100, this.cameras.main.height - 100);
+            
+            const powerup = this.physics.add.image(x, y, randomType);
+            powerup.setDepth(2);
+            this.physics.add.overlap(this.demoPlayer, powerup, () => {
+                this.demoPlayer.playerVsPowerup(this.demoPlayer, powerup);
+            });
+        }
+        
+        // Check for gamepad input to start the game
         if (this.gamepad) {
             if (this.gamepad.A || this.gamepad.buttons[0].pressed) {
                 this.scene.start('CampaignScene');
