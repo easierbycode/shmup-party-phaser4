@@ -12,6 +12,7 @@ const config = {
     // height: 1080,
     pixelArt: true,
     scene: [
+        DemoScene,  // Make DemoScene the first scene to load
         GameScene
     ],
     scale: {
@@ -35,13 +36,6 @@ const config = {
             { key: 'WeaponPlugin', plugin: WeaponPlugin, mapping: 'weapons' }
         ]
     }
-}
-
-// Add the DemoScene to the game configuration
-if (config.scene) {
-    config.scene.push(DemoScene);
-} else {
-    config.scene = [DemoScene];
 }
 
 // Create the game with the updated config

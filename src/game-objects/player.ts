@@ -515,15 +515,15 @@ export default class Player extends BaseEntity {
         }
     }
     
-    selectRandomPerkForDemo() {
-        // This is now handled by the scene's showPerkSelection method
-        // We'll keep this method for backward compatibility
-        if (this.scene.showPerkSelection && typeof this.scene.showPerkSelection === 'function') {
-            this.scene.showPerkSelection(this);
-        } else {
-            this.selectRandomPerk();
-        }
-    }
+    // selectRandomPerkForDemo() {
+    //     // This is now handled by the scene's showPerkSelection method
+    //     // We'll keep this method for backward compatibility
+    //     if (this.scene.showPerkSelection && typeof this.scene.showPerkSelection === 'function') {
+    //         this.scene.showPerkSelection(this);
+    //     } else {
+    //         this.selectRandomPerk();
+    //     }
+    // }
     
     selectRandomPerk() {
         if (this.availablePerks.length === 0) return;
