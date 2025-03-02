@@ -214,6 +214,11 @@ class PreloadScene extends Phaser.Scene {
         // Load powerup images
         this.load.image("giantMode", "powerup-weapon-boost.png");
         this.load.image("fireblast", "powerup-fireblast.png");
+        this.load.image("explosion-0", "explosion-0.png");
+        this.load.image("explosion-1", "explosion-1.png");
+        this.load.image("explosion-circle", "explosion-circle.png");
+        this.load.image("explosion-skull", "explosion-skull.png");
+        this.load.image("nuke", "powerup-nuke.png");
         this.load.image("speed", "powerup-speed.png");
         
         // Load spritesheets
@@ -379,6 +384,7 @@ class MenuScene extends Phaser.Scene {
         this.bullets = this.physics.add.group();
         this.enemyBullets = this.physics.add.group(); // Enemy bullets group
         this.players = this.add.group(); // Group for players (targets)
+        this.powerups = this.physics.add.group(); // Add missing powerups group
         
         // Add any other collections/properties that enemies might be looking for
         this.targets = this.add.group(); // Target group that aliens might be searching
@@ -400,9 +406,6 @@ class MenuScene extends Phaser.Scene {
         
         // Start spawning enemies
         this.spawnAttractModeEnemies();
-        
-        // REMOVE the standard collision detection from here to avoid conflicts
-        // We'll handle all collisions in the update method
         
         // Set up collisions between enemy bullets and player
         this.physics.add.overlap(this.enemyBullets, this.players, (bullet, player) => {
@@ -656,6 +659,7 @@ class MenuScene extends Phaser.Scene {
                             
                             // FORCE DESTROY enemy - don't rely on damage method
                             // for attract mode, we just want visual effect
+                            baddie.onDestroy();
                             baddie.destroy();
                         });
                     }

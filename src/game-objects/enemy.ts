@@ -71,7 +71,7 @@ export default class Enemy extends BaseEntity {
     }
     
     dropPowerup() {
-        const powerupTypes = ['speed', 'fireblast', 'giantMode', 'wreckingBall', 'healthpack'];
+        const powerupTypes = ['speed', 'fireblast', 'giantMode', 'wreckingBall', 'healthpack', 'nuke'];
         const randomType = powerupTypes[Phaser.Math.Between(0, powerupTypes.length - 1)];
         
         this.scene.powerups.add(

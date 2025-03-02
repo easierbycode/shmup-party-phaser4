@@ -1439,7 +1439,7 @@ class Weapon extends Phaser.Events.EventEmitter {
     }
 
     // Prepare and fire the bullet
-    if (bullet !== undefined) {
+    if (bullet !== undefined && bullet !== null) {
       bullet.prepare(fromX, fromY);
       bullet.setData({
         fromX,

@@ -1,5 +1,6 @@
 import { GameScene } from './game-scene.ts';
 import { Bullet, Weapon, WeaponPlugin, consts } from './weapons/weapon-plugin/index.ts';
+import DemoScene from './scenes/demo-scene';
 
 const config = {
     type: Phaser.AUTO,
@@ -35,5 +36,13 @@ const config = {
         ]
     }
 }
-new Phaser.Game(config);
-            
+
+// Add the DemoScene to the game configuration
+if (config.scene) {
+    config.scene.push(DemoScene);
+} else {
+    config.scene = [DemoScene];
+}
+
+// Create the game with the updated config
+const game = new Phaser.Game(config);
