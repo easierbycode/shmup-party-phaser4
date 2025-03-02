@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <script src="./_phaser.js"></script>
+    
+    <script>
+        // Shmup Party Wave Editor
+        // This is a separate tool for developers to design levels and waves
+
+        class WaveEditor {
+            constructor() {
+                this.config = {
+                    width: 1680,
+                    height: 1050,
+                    backgroundColor: "#111111",
+                    parent: 'wave-editor',
+                    dom: {
+                        createContainer: true
+                    },
+                    scale: {
+                        mode: Phaser.Scale.FIT,
+                        autoCenter: Phaser.Scale.CENTER_BOTH
+                    },
+                    scene: {
+                        preload: this.preload,
+                        create: this.create,
+                        update: this.update
+                    }
+                };
+
+                this.game = new Phaser.Game(this.config);
+                this.game.editor = this;
+
+                this.waves = [
+                    []
+                ];
+                this.currentWave = 0;
+                this.enemyTypes = [
+                    { key: 'basicEnemy', sprite: 'enemy', health: 100, speed: 100 },
+                    { key: 'fastEnemy', sprite: 'enemy-fast', health: 80, speed: 200 }
+                ];
+                this.selectedEnemyType = 0;
+                this.placementMode = 'single'; // 'single', 'line', 'circle', 'random'
+            }
+
+            preload() {
+                // Set base URL for assets
+                this.load.baseURL = "https://raw.githubusercontent.com/easierbycode/shmup-party-phaser3/master/src/assets/images/";
+
+                // Load grid background
+                this.load.image("grid", "grid.png");
+                this.load.image("bg", "scorched-earth.png");
+
+                // Load enemy sprites
+                this.load.image("enemy", "monster-1.png");
+                this.load.image("enemy-fast", "monster-2.png");
+
+                // Load UI elements
+                this.load.image("button", "button.png");
+            }
+
+            create() {
+                const editor = this.game.editor;
+
+                // Create reference to this scene
+                editor.scene = this;
+
+                // Background
+                this.add.tileSprite(0, 0, editor.config.width, editor.config.height, "bg").setOrigin(0).setAlpha(0.3);
+                this.grid = this.add.tileSprite(0, 0, editor.config.width, editor.config.height, "grid").setOrigin(0);
+
+                // Create UI
+                editor.createUI();
+
+                // Create enemy placement container
+                editor.waveContainers = [];
+                editor.addNewWave();
+
+                // Enable input
+                this.input.on('pointerdown', (pointer) => {
+                    if (pointer.y < editor.config.height - 150) { // Above UI area
+                        editor.placeEnemy(pointer.x, pointer.y);
+                    }
+                });
+
+                // Keyboard shortcuts
+                this.input.keyboard.on('keydown-DELETE', () => {
+                    editor.clearCurrentWave();
+                });
+
+                this.input.keyboard.on('keydown-RIGHT', () => {
+                    editor.nextWave();
+                });
+
+                this.input.keyboard.on('keydown-LEFT', () => {
+                    editor.previousWave();
+                });
+
+                this.input.keyboard.on('keydown-N', () => {
+                    editor.addNewWave();
+                });
+
+                this.input.keyboard.on('keydown-S', () => {
+                    editor.saveLevel();
+                });
+
+                this.input.keyboard.on('keydown-L', () => {
+                    editor.loadLevel();
+                });
+
+                this.input.keyboard.on('keydown-ONE', () => {
+                    editor.selectedEnemyType = 0;
+                    editor.updateUI();
+                });
+
+                this.input.keyboard.on('keydown-TWO', () => {
+                    editor.selectedEnemyType = 1;
+                    editor.updateUI();
+                });
+            }
+
+            update() {
+                // Update preview of placement if needed
+            }
+
+            createUI() {
+                const { width, height } = this.scene.sys.game.config;
+
+                // UI background
+                const uiBackground = this.scene.add.rectangle(
+                    width / 2,
+                    height - 75,
+                    width,
+                    150,
+                    0x000000,
+                    0.8
+                );
+
+                // Wave controls
+                this.waveText = this.scene.add.text(20, height - 140, 'Wave: 1', {
+                    fontFamily: 'Arial',
+                    fontSize: '24px',
+                    color: '#ffffff'
+                });
+
+                this.enemyCountText = this.scene.add.text(20, height - 110, 'Enemies: 0', {
+                    fontFamily: 'Arial',
+                    fontSize: '18px',
+                    color: '#ffffff'
+                });
+
+                // Create buttons
+                const buttonY = height - 60;
+
+                // Previous wave
+                this.createButton(100, buttonY, '< Prev Wave', () => this.previousWave());
+
+                // Next wave
+                this.createButton(250, buttonY, 'Next Wave >', () => this.nextWave());
+
+                // Add new wave
+                this.createButton(400, buttonY, 'New Wave', () => this.addNewWave());
+
+                // Clear wave
+                this.createButton(550, buttonY, 'Clear Wave', () => this.clearCurrentWave());
+
+                // Save level
+                this.createButton(700, buttonY, 'Save Level', () => this.saveLevel());
+
+                // Load level
+                this.createButton(850, buttonY, 'Load Level', () => this.loadLevel());
+
+                // Enemy type selector
+                const enemyTypeX = width - 300;
+                this.scene.add.text(enemyTypeX, height - 140, 'Enemy Type:', {
+                    fontFamily: 'Arial',
+                    fontSize: '18px',
+                    color: '#ffffff'
+                });
+
+                this.enemyTypeButtons = [];
+
+                this.enemyTypes.forEach((type, index) => {
+                    const button = this.createImageButton(
+                        enemyTypeX + (index * 100) + 20,
+                        height - 100,
+                        type.sprite,
+                        () => {
+                            this.selectedEnemyType = index;
+                            this.updateUI();
+                        }
+                    );
+
+                    this.enemyTypeButtons.push(button);
+                });
+
+                // Placement mode selector
+                const placementX = width - 600;
+                this.scene.add.text(placementX, height - 140, 'Placement Mode:', {
+                    fontFamily: 'Arial',
+                    fontSize: '18px',
+                    color: '#ffffff'
+                });
+
+                this.placementModeButtons = [];
+                const placementModes = ['Single', 'Line', 'Circle', 'Random'];
+
+                placementModes.forEach((mode, index) => {
+                    const button = this.createButton(
+                        placementX + (index * 100) + 20,
+                        height - 100,
+                        mode,
+                        () => {
+                            this.placementMode = mode.toLowerCase();
+                            this.updateUI();
+                        },
+                        100
+                    );
+
+                    this.placementModeButtons.push(button);
+                });
+
+                // Initialize UI state
+                this.updateUI();
+            }
+
+            updateUI() {
+                // Update wave text
+                this.waveText.setText(`Wave: ${this.currentWave + 1}`);
+
+                // Update enemy count
+                const currentEnemies = this.waves[this.currentWave].length;
+                this.enemyCountText.setText(`Enemies: ${currentEnemies}`);
+
+                // Update enemy type selection
+                this.enemyTypeButtons.forEach((button, index) => {
+                    button.setTint(index === this.selectedEnemyType ? 0x00ff00 : 0xffffff);
+                });
+
+                // Update placement mode selection
+                this.placementModeButtons.forEach((button, index) => {
+                    const modes = ['single', 'line', 'circle', 'random'];
+                    button.setStyle({
+                        backgroundColor: modes[index] === this.placementMode ? '#008800' : '#880000'
+                    });
+                });
+            }
+
+            createButton(x, y, text, callback, width = 130) {
+                const button = this.scene.add.text(x, y, text, {
+                    fontFamily: 'Arial',
+                    fontSize: '18px',
+                    color: '#ffffff',
+                    backgroundColor: '#880000',
+                    padding: {
+                        left: 10,
+                        right: 10,
+                        top: 5,
+                        bottom: 5
+                    },
+                    fixedWidth: width
+                }).setOrigin(0.5);
+
+                button.setInteractive({ useHandCursor: true })
+                    .on('pointerover', () => button.setStyle({ backgroundColor: '#aa0000' }))
+                    .on('pointerout', () => button.setStyle({ backgroundColor: '#880000' }))
+                    .on('pointerdown', callback);
+
+                return button;
+            }
+
+            createImageButton(x, y, sprite, callback) {
+                const button = this.scene.add.image(x, y, sprite).setScale(0.8);
+
+                button.setInteractive({ useHandCursor: true })
+                    .on('pointerover', () => button.setScale(1))
+                    .on('pointerout', () => button.setScale(0.8))
+                    .on('pointerdown', callback);
+
+                return button;
+            }
+
+            addNewWave() {
+                // Create a new wave array
+                this.waves.push([]);
+
+                // Create container for this wave
+                const container = this.scene.add.container(0, 0);
+                this.waveContainers.push(container);
+
+                // Hide all containers except current
+                this.waveContainers.forEach((c, i) => c.setVisible(i === this.waves.length - 1));
+
+                // Set the current wave to the new one
+                this.currentWave = this.waves.length - 1;
+
+                // Update UI
+                this.updateUI();
+            }
+
+            nextWave() {
+                if (this.currentWave < this.waves.length - 1) {
+                    this.currentWave++;
+
+                    // Hide all containers except current
+                    this.waveContainers.forEach((c, i) => c.setVisible(i === this.currentWave));
+
+                    // Update UI
+                    this.updateUI();
+                }
+            }
+
+            previousWave() {
+                if (this.currentWave > 0) {
+                    this.currentWave--;
+
+                    // Hide all containers except current
+                    this.waveContainers.forEach((c, i) => c.setVisible(i === this.currentWave));
+
+                    // Update UI
+                    this.updateUI();
+                }
+            }
+
+            clearCurrentWave() {
+                // Clear the current wave array
+                this.waves[this.currentWave] = [];
+
+                // Remove all sprites from the container
+                this.waveContainers[this.currentWave].removeAll(true);
+
+                // Update UI
+                this.updateUI();
+            }
+
+            placeEnemy(x, y) {
+                const enemyType = this.enemyTypes[this.selectedEnemyType];
+
+                switch (this.placementMode) {
+                    case 'single':
+                        this.createEnemy(x, y, enemyType);
+                        break;
+
+                    case 'line':
+                        // Place enemies in a line
+                        for (let i = 0; i < 5; i++) {
+                            this.createEnemy(x + (i * 50), y, enemyType);
+                        }
+                        break;
+
+                    case 'circle':
+                        // Place enemies in a circle
+                        const radius = 100;
+                        const count = 8;
+                        for (let i = 0; i < count; i++) {
+                            const angle = (i / count) * Math.PI * 2;
+                            const enemyX = x + Math.cos(angle) * radius;
+                            const enemyY = y + Math.sin(angle) * radius;
+                            this.createEnemy(enemyX, enemyY, enemyType);
+                        }
+                        break;
+
+                    case 'random':
+                        // Place random enemies in an area
+                        for (let i = 0; i < 10; i++) {
+                            const offsetX = Phaser.Math.Between(-200, 200);
+                            const offsetY = Phaser.Math.Between(-200, 200);
+                            this.createEnemy(x + offsetX, y + offsetY, enemyType);
+                        }
+                        break;
+                }
+
+                // Update UI
+                this.updateUI();
+            }
+
+            createEnemy(x, y, enemyType) {
+                // Add to wave data
+                this.waves[this.currentWave].push({
+                    type: enemyType.key,
+                    x: x,
+                    y: y,
+                    health: enemyType.health,
+                    speed: enemyType.speed
+                });
+
+                // Create visual representation
+                const sprite = this.scene.add.image(x, y, enemyType.sprite).setScale(0.5);
+
+                // Add to container
+                this.waveContainers[this.currentWave-1].add(sprite);
+
+                // Make draggable
+                sprite.setInteractive({ draggable: true });
+
+                const index = this.waves[this.currentWave].length - 1;
+
+                this.scene.input.setDraggable(sprite);
+
+                this.scene.input.on('drag', (pointer, gameObject, dragX, dragY) => {
+                    if (gameObject === sprite) {
+                        gameObject.x = dragX;
+                        gameObject.y = dragY;
+
+                        // Update the data
+                        if (this.waves[this.currentWave][index]) {
+                            this.waves[this.currentWave][index].x = dragX;
+                            this.waves[this.currentWave][index].y = dragY;
+                        }
+                    }
+                });
+
+                // Add right click to delete
+                sprite.on('pointerdown', (pointer) => {
+                    if (pointer.rightButtonDown()) {
+                        // Remove from wave data
+                        this.waves[this.currentWave].splice(index, 1);
+
+                        // Remove sprite
+                        sprite.destroy();
+
+                        // Update UI
+                        this.updateUI();
+                    }
+                });
+
+                return sprite;
+            }
+
+            saveLevel() {
+                // Convert wave data to JSON
+                const levelData = {
+                    enemyList: this.waves
+                };
+
+                const json = JSON.stringify(levelData, null, 2);
+
+                // Create a download link
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(json);
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", dataStr);
+                downloadAnchorNode.setAttribute("download", "shmup-party-level.json");
+                document.body.appendChild(downloadAnchorNode);
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
+            }
+
+            loadLevel() {
+                // Create file input element
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+
+                input.onchange = e => {
+                    const file = e.target.files[0];
+                    const reader = new FileReader();
+
+                    reader.onload = event => {
+                        try {
+                            const levelData = JSON.parse(event.target.result);
+
+                            if (levelData.enemyList) {
+                                // Clear existing waves
+                                this.waves = [];
+                                this.waveContainers.forEach(container => container.destroy());
+                                this.waveContainers = [];
+
+                                // Load waves from file
+                                levelData.enemyList.forEach(wave => {
+                                    // Create new wave container
+                                    const container = this.scene.add.container(0, 0);
+                                    this.waveContainers.push(container);
+
+                                    // Add wave data
+                                    this.waves.push([]);
+
+                                    // Add enemies to the wave
+                                    wave.forEach(enemy => {
+                                        // Find enemy type
+                                        const enemyTypeIndex = this.enemyTypes.findIndex(t => t.key === enemy.type);
+                                        if (enemyTypeIndex >= 0) {
+                                            // Create enemy with saved properties
+                                            this.waves[this.waves.length - 1].push({
+                                                type: enemy.type,
+                                                x: enemy.x,
+                                                y: enemy.y,
+                                                health: enemy.health || this.enemyTypes[enemyTypeIndex].health,
+                                                speed: enemy.speed || this.enemyTypes[enemyTypeIndex].speed
+                                            });
+
+                                            // Create visual representation
+                                            const sprite = this.scene.add.image(
+                                                enemy.x,
+                                                enemy.y,
+                                                this.enemyTypes[enemyTypeIndex].sprite
+                                            ).setScale(0.5);
+
+                                            container.add(sprite);
+                                        }
+                                    });
+                                });
+
+                                // Set current wave to first one
+                                this.currentWave = 0;
+
+                                // Hide all containers except current
+                                this.waveContainers.forEach((c, i) => c.setVisible(i === this.currentWave));
+
+                                // Update UI
+                                this.updateUI();
+                            }
+                        } catch (error) {
+                            console.error("Error loading level:", error);
+                            alert("Error loading level file. Please check the file format.");
+                        }
+                    };
+
+                    reader.readAsText(file);
+                };
+
+                input.click();
+            }
+        }
+
+        // Initialize Wave Editor
+        document.addEventListener('DOMContentLoaded', () => {
+            // Create editor container
+            const container = document.createElement('div');
+            container.id = 'wave-editor';
+            container.style.width = '100%';
+            container.style.height = '100vh';
+            document.body.appendChild(container);
+
+            // Create editor instance
+            const editor = new WaveEditor();
+
+            // Add instructions
+            const instructions = document.createElement('div');
+            instructions.style.position = 'absolute';
+            instructions.style.top = '10px';
+            instructions.style.left = '10px';
+            instructions.style.background = 'rgba(0, 0, 0, 0.7)';
+            instructions.style.color = 'white';
+            instructions.style.padding = '10px';
+            instructions.style.borderRadius = '5px';
+            instructions.style.zIndex = '1000';
+            instructions.innerHTML = `
+        <h3>Wave Editor Controls</h3>
+        <p><b>Left Click:</b> Place enemy</p>
+        <p><b>Right Click:</b> Delete enemy</p>
+        <p><b>Drag:</b> Move enemy</p>
+        <p><b>← →:</b> Previous/Next wave</p>
+        <p><b>N:</b> New wave</p>
+        <p><b>Delete:</b> Clear current wave</p>
+        <p><b>S:</b> Save level</p>
+        <p><b>L:</b> Load level</p>
+        <p><b>1-2:</b> Select enemy type</p>
+    `;
+            document.body.appendChild(instructions);
+        });
+    </script>
+</body>
+
+</html>
