@@ -219,6 +219,12 @@ class PreloadScene extends Phaser.Scene {
         
         // Load spritesheets
         this.load.spritesheet(
+            'barrier',
+            'barrier.png',
+            { frameWidth: 80, frameHeight: 41 }
+        );
+
+        this.load.spritesheet(
             'blood-splat',
             'blood-splat.png',
             { frameWidth: 137, frameHeight: 136 }
@@ -228,6 +234,45 @@ class PreloadScene extends Phaser.Scene {
             frameHeight: 11,
             frameWidth: 12
         });
+
+        this.load.spritesheet(
+            'ciga-bullet',
+            'ciga-bullet.png',
+            { frameWidth: 9, frameHeight: 12 }
+        );
+        this.load.spritesheet(
+            'ciga-bullet.death',
+            'ciga-bullet-death.png',
+            { frameWidth: 9, frameHeight: 11 }
+        );
+
+        this.load.spritesheet(
+            'ion-bullet',
+            'ion.png',
+            { frameWidth: 48, frameHeight: 30 }
+        );
+        this.load.spritesheet(
+            'ion-bullet-impact',
+            'ion-impact.png',
+            { frameWidth: 18, frameHeight: 22 }
+        );
+
+        this.load.spritesheet(
+            'pacman-bullet',
+            'pacman-spritesheet.png',
+            { frameWidth: 32, frameHeight: 32 }
+        );
+        this.load.spritesheet(
+            'pac-ghost',
+            'pac-ghost.png',
+            { frameWidth: 13, frameHeight: 14 }
+        );
+
+        this.load.spritesheet(
+            'smoke',
+            'smoke.png',
+            { frameWidth: 26, frameHeight: 33 }
+        );
         
         this.load.spritesheet("wreckingBall", "chomp-ball.png", {
             frameHeight: 32,
