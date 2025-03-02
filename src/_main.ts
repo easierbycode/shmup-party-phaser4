@@ -1,47 +1,14 @@
 import BaseEntity from './game-objects/base-entity.ts';
 import Zombie from './game-objects/zombie.ts';
 import Alien from './game-objects/alien.ts';
-import EvilBrainEye from './game-objects/evil-brain-eye.ts';
 import { Bullet, Weapon, WeaponPlugin, consts } from './weapons/weapon-plugin/index.ts';
 import BloodSplatter from './game-objects/blood-splatter.ts';
+import EvilBrain from './game-objects/evil-brain.ts';
+import config from './config.ts';
 
-// Constants
-const WIDTH = 1680;
-const HEIGHT = 1050;
-const ZOOM_MIN = 1.0;
-const ZOOM_MAX = 2;
-const ZOOM_LERP = 1;
-const FOLLOW_LERP_X = 0.05;
-const FOLLOW_LERP_Y = 0.05;
-const SPRITE_KEY = 'evil-brain-bullet';
+import { FOLLOW_LERP_X, FOLLOW_LERP_Y, HEIGHT, WIDTH, ZOOM_LERP, ZOOM_MAX, ZOOM_MIN } from './constants.ts';
 
-// Game Configuration
-let config = {
-    scale: {
-        mode: Phaser.Scale.ENVELOP
-    },
-    backgroundColor: "#000000",
-    width: WIDTH,
-    height: HEIGHT,
-    physics: {
-        default: "arcade",
-        arcade: {
-            debug: new URL(window.location.href).searchParams.get('debug') == 1,
-            gravity: { x: 0, y: 0 }
-        }
-    },
-    input: {
-        gamepad: true
-    },
-    render: {
-        pixelArt: true
-    },
-    plugins: {
-        scene: [
-            { key: 'WeaponPlugin', plugin: WeaponPlugin, mapping: 'weapons' }
-        ]
-    }
-};
+
 
 
 // Player class

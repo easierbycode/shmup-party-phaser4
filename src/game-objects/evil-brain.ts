@@ -1,8 +1,10 @@
 
+import { consts, Bullet, Weapon } from "../weapons/weapon-plugin";
 import BaseEntity from "./base-entity";
+import config from "../config";
 
 
-export default class EvilBrainEye extends BaseEntity {
+class EvilBrainEye extends BaseEntity {
     constructor(scene, x = 0, y = 0) {
         super(scene, x, y, 'evil-brain-eye', 2);
         this.health = 6000;
@@ -100,6 +102,8 @@ class EvilBrainBottom extends Phaser.GameObjects.Sprite {
     }
 }
 
+const SPRITE_KEY = 'evil-brain-bullet';
+
 class EvilBrainBullet extends Weapon {
     constructor(evilBrain, scene, bulletLimit = 20, key = '', frame = '', group) {
         super(scene, bulletLimit, key, frame);
@@ -174,7 +178,7 @@ class _Bullet extends Bullet {
     }
 }
 
-class EvilBrain extends Phaser.GameObjects.Container {
+export default class EvilBrain extends Phaser.GameObjects.Container {
     constructor(scene, x, y) {
         // TOP ( 96x58 )
         let top = new EvilBrainTop(scene);
