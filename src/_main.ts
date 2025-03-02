@@ -956,6 +956,7 @@ class MenuScene extends Phaser.Scene {
 class GameHUD extends Phaser.Scene {
     constructor() {
         super({ key: 'GameHUD' });
+        this.activeGameScene = null;
     }
     
     create() {
@@ -975,6 +976,15 @@ class GameHUD extends Phaser.Scene {
         this.events.on('showWaveText', this.showWaveText, this);
         this.events.on('updatePlayerHealth', this.updatePlayerHealth, this);
         this.events.on('showPerkSelection', this.showPerkSelection, this);
+        
+        // Store reference to the active game scene
+        if (this.scene.isActive('CampaignScene')) {
+            this.activeGameScene = 'CampaignScene';
+        } else if (this.scene.isActive('SurvivalScene')) {
+            this.activeGameScene = 'SurvivalScene';
+        } else {
+            this.activeGameScene = 'GameScene';
+        }
     }
     
     showWaveText(text, color = 0xffffff) {
@@ -1104,15 +1114,15 @@ class GameHUD extends Phaser.Scene {
                     title.destroy();
                     buttons.forEach(b => b.destroy());
                     
-                    // Resume game
-                    this.scene.resume('CampaignScene');
+                    // Resume game - use the active game scene instead of hardcoding
+                    this.scene.resume(this.activeGameScene);
                 });
                 
             buttons.push(container);
         });
         
-        // Pause the current game scene
-        this.scene.pause('CampaignScene');
+        // Pause the current game scene - use the active game scene instead of hardcoding
+        this.scene.pause(this.activeGameScene);
     }
 }
 
