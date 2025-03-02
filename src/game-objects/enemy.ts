@@ -59,7 +59,6 @@ export default class Enemy extends BaseEntity {
     }
     
     onDestroy() {
-        console.log('Enemy destroyed');
         // Drop experience
         if (this.targetPlayer) {
             this.targetPlayer.collectExperience(this.experienceValue);
