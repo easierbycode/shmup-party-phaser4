@@ -44,10 +44,10 @@ export default class BaseEntity extends Phaser.Physics.Arcade.Sprite {
         let bloodSplatter = bloodSplatters.get( x, y ).setVisible( true ).setActive( true ).setRotation( rotation );
         bloodSplatter.on(
             'animationcomplete-default',
-            () => bloodSplatter.setActive(!1),bloodSplatter.setVisible(!1)
+            () => { bloodSplatters.killAndHide( bloodSplatter ) }
         );
         bloodSplatter.play( 'default' );
-        // this.setActive(!1),this.setVisible(!1);
+        this.scene.baddies.killAndHide( this );
     }
 
     reset() {
