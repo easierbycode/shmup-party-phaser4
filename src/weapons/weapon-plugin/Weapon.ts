@@ -319,6 +319,10 @@ class Weapon extends Phaser.Events.EventEmitter {
     this.createBullets(bulletLimit, key, frame, group);
   }
 
+  private getBulletChildren(): Bullet[] {
+    return this.bullets.getChildren() as Bullet[];
+  }
+
   /**
    * This is the {@link https://photonstorm.github.io/phaser3-docs/Phaser.GameObjects.Group.html Group} that contains all of the bullets managed by this plugin.
    */
@@ -709,7 +713,7 @@ class Weapon extends Phaser.Events.EventEmitter {
   set bulletCollideWorldBounds(value) {
     this._bulletCollideWorldBounds = value;
 
-    (this.bullets.children as Phaser.Structs.Set<Bullet>).each(child => {
+    this.getBulletChildren().forEach(child => {
       child.body.collideWorldBounds = value;
       child.setData('bodyDirty', false);
     });
@@ -987,7 +991,7 @@ class Weapon extends Phaser.Events.EventEmitter {
         visible: false,
       });
 
-      (this.bullets.children as Phaser.Structs.Set<Bullet>).each(child => {
+      this.getBulletChildren().forEach(child => {
         child.setData('bulletManager', this);
       });
 
@@ -1000,7 +1004,7 @@ class Weapon extends Phaser.Events.EventEmitter {
       }
 
       if (group) {
-        group.addMultiple(this.bullets.children.entries);
+        group.addMultiple(this.getBulletChildren());
       }
     }
 
@@ -1010,7 +1014,7 @@ class Weapon extends Phaser.Events.EventEmitter {
   /**
    * Call a function on each in-flight bullet in this Weapon.
    *
-   * See {@link https://photonstorm.github.io/phaser3-docs/Phaser.Structs.Set.html#each Set.each} for more details.
+   * See {@link https://docs.phaser.io/api-documentation/class/gameobjects-group#getChildren Group.getChildren} for more details.
    *
    * @param callback - The function that will be called for each applicable child.
    * The child will be passed as the first argument.
@@ -1019,7 +1023,7 @@ class Weapon extends Phaser.Events.EventEmitter {
    * @return This Weapon instance.
    */
   forEach(callback: Function, callbackContext: any, ...args: any[]): this {
-    this.bullets.children.each(child => {
+    this.getBulletChildren().forEach(child => {
       if (child.active) {
         callback.call(callbackContext, child, args);
       }
@@ -1036,13 +1040,13 @@ class Weapon extends Phaser.Events.EventEmitter {
    * @return This Weapon instance.
    */
   pauseAll(): this {
-    (this.bullets.children as Phaser.Structs.Set<Bullet>).each(child => {
+    this.getBulletChildren().forEach(child => {
       child.body.enable = false;
       const timeEvent = child.getData('timeEvent');
       if (timeEvent !== undefined) {
         timeEvent.paused = true;
       }
-    }, this);
+    });
 
     return this;
   }
@@ -1055,13 +1059,13 @@ class Weapon extends Phaser.Events.EventEmitter {
    * @return This Weapon instance.
    */
   resumeAll(): this {
-    (this.bullets.children as Phaser.Structs.Set<Bullet>).each(child => {
+    this.getBulletChildren().forEach(child => {
       child.body.enable = true;
       const timeEvent = child.getData('timeEvent');
       if (timeEvent !== undefined) {
         timeEvent.paused = false;
       }
-    }, this);
+    });
 
     return this;
   }
@@ -1073,7 +1077,7 @@ class Weapon extends Phaser.Events.EventEmitter {
    * @return This Weapon instance.
    */
   killAll(): this {
-    (this.bullets.children as Phaser.Structs.Set<Bullet>).each(child => {
+    this.getBulletChildren().forEach(child => {
       if (child.active) {
         child.kill();
       }
@@ -1594,7 +1598,7 @@ class Weapon extends Phaser.Events.EventEmitter {
     this._data.offsetY = offsetY;
 
     //  Update all bullets in the pool
-    (this.bullets.children as Phaser.Structs.Set<Bullet>).each(child => {
+    this.getBulletChildren().forEach(child => {
       child.body.setSize(width, height);
       child.body.setOffset(offsetX, offsetY);
       child.setData('bodyDirty', false);

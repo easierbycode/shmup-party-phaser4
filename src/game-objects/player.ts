@@ -92,7 +92,6 @@ export default class Player extends BaseEntity {
     gamepad: Phaser.Input.Gamepad.Gamepad;
     gamepadVibration: GamepadHapticActuator | null;
     inputEnabled: boolean = true;
-    scene!: Phaser.Scene;
     weapons: Weapon[] = [];
     level = 1;
     perks = [];
@@ -110,8 +109,6 @@ export default class Player extends BaseEntity {
         key: string = 'player'
     ) {
         super(scene, x, y, key);
-
-        scene.add.existing(this);
 
         this.body.setCollideWorldBounds(true);
 
