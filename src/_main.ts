@@ -320,6 +320,10 @@ class PreloadScene extends Phaser.Scene {
         });
         
         // UI elements
+        this.load.image("comp-button", "gfx/comp-button.png");
+        this.load.image("listbox-panel", "gfx/listbox-panel.png");
+        this.load.image("listbox-line-selector", "gfx/listbox-line-selector.png");
+        this.load.image("selector-square", "gfx/selector-square.png");
         this.load.image("perk-icon-speed", "perk-speed.png");
         this.load.image("perk-icon-fireRate", "perk-fire-rate.png");
         this.load.image("perk-icon-damage", "perk-damage.png");
@@ -328,6 +332,72 @@ class PreloadScene extends Phaser.Scene {
     create() {
         this.scene.start('MenuScene');
     }
+}
+
+const PERK_OPTIONS = [
+    { type: 'speed', name: 'Speed Boost', description: '20% movement speed increase' },
+    { type: 'fireRate', name: 'Rapid Fire', description: '20% faster firing rate' },
+    { type: 'damage', name: 'Heavy Hitter', description: '50% damage increase' }
+];
+
+function createPerkSelectionCard(scene, perk, x, y, onSelect) {
+    const cardWidth = 279;
+    const container = scene.add.container(x, y);
+    let selected = false;
+
+    const panel = scene.add.image(0, 0, 'listbox-panel').setOrigin(0.5);
+    const iconFrame = scene.add.image(0, -76, 'selector-square').setScale(0.62);
+    const icon = scene.add.image(0, -76, `perk-icon-${perk.type}`).setScale(1.18);
+    const lineSelector = scene.add.image(0, 38, 'listbox-line-selector')
+        .setOrigin(0.5)
+        .setAlpha(0.18);
+
+    const nameText = scene.add.text(0, 38, perk.name.toUpperCase(), {
+        fontFamily: 'Arial Black, Impact, sans-serif',
+        fontSize: '22px',
+        color: '#d8fbff',
+        stroke: '#041820',
+        strokeThickness: 2
+    }).setOrigin(0.5);
+
+    if (nameText.width > cardWidth * 0.76) {
+        nameText.setScale((cardWidth * 0.76) / nameText.width);
+    }
+
+    const descText = scene.add.text(0, 78, perk.description, {
+        fontFamily: 'Arial',
+        fontSize: '16px',
+        color: '#9bcbd7',
+        align: 'center',
+        wordWrap: { width: cardWidth - 54 }
+    }).setOrigin(0.5, 0);
+
+    panel.setInteractive({ useHandCursor: true });
+
+    const setActiveState = (isActive) => {
+        lineSelector.setAlpha(isActive ? 1 : 0.18);
+        panel.setTint(isActive ? 0x9fefff : 0xffffff);
+        iconFrame.setTint(isActive ? 0xffe17a : 0xffffff);
+        nameText.setColor(isActive ? '#ffffff' : '#d8fbff');
+    };
+
+    container.setSelected = (value) => {
+        selected = value;
+        setActiveState(selected);
+        return container;
+    };
+
+    panel
+        .on('pointerover', () => setActiveState(true))
+        .on('pointerout', () => setActiveState(selected))
+        .on('pointerdown', () => {
+            container.setSelected(true);
+            onSelect(perk, container);
+        });
+
+    container.add([panel, iconFrame, icon, lineSelector, nameText, descText]);
+
+    return container;
 }
 
 class MenuScene extends Phaser.Scene {
@@ -346,24 +416,24 @@ class MenuScene extends Phaser.Scene {
         this.setupAttractMode();
         
         // Game title
-        this.add.text(width / 2, height / 4, `Sh'M↑ Party`, {
-            fontFamily: 'Arial',
-            fontSize: '64px',
-            color: '#ffffff',
-            stroke: '#000000',
-            strokeThickness: 6
-        }).setOrigin(0.5);
+        this.add.image(width / 2, height * 0.12, 'logo')
+            .setOrigin(0.5)
+            .setDepth(20);
         
         // Menu buttons
-        this.createButton(width / 2, height / 2, 'Campaign Mode', () => {
+        const buttonLeft = 0;
+        const firstButtonY = height * 0.42;
+        const buttonGap = 180;
+
+        this.createButton(buttonLeft, firstButtonY, 'Campaign Mode', () => {
             this.scene.start('CampaignScene');
         });
         
-        this.createButton(width / 2, height / 2 + 80, 'Survival Mode', () => {
+        this.createButton(buttonLeft, firstButtonY + buttonGap, 'Survival Mode', () => {
             this.scene.start('SurvivalScene');
         });
         
-        this.createButton(width / 2, height / 2 + 160, 'Options', () => {
+        this.createButton(buttonLeft, firstButtonY + buttonGap * 2, 'Options', () => {
             // Options scene would go here
         });
         
@@ -581,27 +651,46 @@ class MenuScene extends Phaser.Scene {
     }
     
     createButton(x, y, text, callback) {
-        const button = this.add.text(x, y, text, {
-            fontFamily: 'Arial',
-            fontSize: '32px',
-            color: '#ffffff',
-            backgroundColor: '#880000',
-            padding: {
-                left: 20,
-                right: 20,
-                top: 10,
-                bottom: 10
-            }
-        }).setOrigin(0.5);
-        
-        // Set higher depth to ensure buttons appear above attract mode
-        button.setDepth(20);
-        button.setInteractive({ useHandCursor: true })
-            .on('pointerover', () => button.setTint(0xff0000))
-            .on('pointerout', () => button.clearTint())
+        const scale = 0.74;
+        const panelCenterX = x + 1050.5 * scale;
+        const panelWidth = 509 * scale;
+        const panelHeight = 86 * scale;
+
+        const button = this.add.image(x, y, 'comp-button')
+            .setOrigin(0, 0.5)
+            .setScale(scale)
+            .setDepth(20);
+
+        const label = this.add.text(panelCenterX, y, text.toUpperCase(), {
+            fontFamily: 'Arial Black, Impact, sans-serif',
+            fontSize: '34px',
+            fontStyle: 'bold',
+            color: '#145a70',
+            stroke: '#061c28',
+            strokeThickness: 2
+        }).setOrigin(0.5).setDepth(21);
+
+        if (label.width > panelWidth * 0.82) {
+            label.setScale((panelWidth * 0.82) / label.width);
+        }
+
+        const hitArea = this.add.zone(panelCenterX, y, panelWidth, panelHeight)
+            .setOrigin(0.5)
+            .setDepth(22)
+            .setInteractive({ useHandCursor: true });
+
+        hitArea
+            .on('pointerover', () => {
+                button.setTint(0xbfffff);
+                label.setColor('#1a7690');
+            })
+            .on('pointerout', () => {
+                button.clearTint();
+                label.setColor('#145a70');
+            })
             .on('pointerdown', callback);
-            
-        return button;
+
+        return { button, label, hitArea };
     }
     
     update() {
@@ -719,52 +808,25 @@ class MenuScene extends Phaser.Scene {
             }
         ).setOrigin(0.5);
         
-        // Available perks - match the style in GameHUD scene
-        const perks = [
-            { type: 'speed', name: 'Speed Boost', description: '20% movement speed increase' },
-            { type: 'fireRate', name: 'Rapid Fire', description: '20% faster firing rate' },
-            { type: 'damage', name: 'Heavy Hitter', description: '50% damage increase' }
-        ];
-        
         // Create perk selection buttons
         const buttons = [];
-        perks.forEach((perk, index) => {
-            const x = this.cameras.main.width / 2 + (index - 1) * 250;
-            const y = this.cameras.main.height / 2;
-            
-            const container = this.add.container(x, y);
-            
-            // Icon background
-            const bg = this.add.rectangle(0, 0, 200, 240, 0x333333, 0.8)
-                .setStrokeStyle(2, 0xffffff);
-            
-            // Perk icon - use try-catch for missing assets
-            let icon;
-            try {
-                icon = this.add.image(0, -70, `perk-icon-${perk.type}`)
-                    .setScale(2);
-            } catch (e) {
-                // Fallback icon
-                icon = this.add.image(0, -70, 'bullet')
-                    .setScale(2);
-            }
-            
-            // Perk name
-            const nameText = this.add.text(0, 0, perk.name, {
-                fontFamily: 'Arial',
-                fontSize: '24px',
-                color: '#ffffff'
-            }).setOrigin(0.5);
-            
-            // Perk description
-            const descText = this.add.text(0, 40, perk.description, {
-                fontFamily: 'Arial',
-                fontSize: '16px',
-                color: '#ffffff',
-                wordWrap: { width: 180 }
-            }).setOrigin(0.5);
-            
-            container.add([bg, icon, nameText, descText]);
+        let selectionFinalized = false;
+        PERK_OPTIONS.forEach((perk, index) => {
+            const x = this.cameras.main.width / 2 + (index - 1) * 320;
+            const y = this.cameras.main.height / 2 + 40;
+
+            const container = createPerkSelectionCard(this, perk, x, y, (selectedPerk) => {
+                if (selectionFinalized) return;
+                selectionFinalized = true;
+                player.applyPerk(selectedPerk.type);
+                this.tweens.add({
+                    targets: uiElements,
+                    alpha: 0,
+                    duration: 500,
+                    onComplete: cleanupUI
+                });
+            });
+
             buttons.push(container);
             container.setDepth(25); // Make sure it appears above the attract mode
         });
@@ -786,13 +848,15 @@ class MenuScene extends Phaser.Scene {
         if (player.isDemoMode) {
             const randomDelay = Phaser.Math.Between(800, 1500);
             this.time.delayedCall(randomDelay, () => {
+                if (selectionFinalized) return;
+                selectionFinalized = true;
+
                 // Pick a random perk
-                const selectedPerk = perks[Phaser.Math.Between(0, perks.length - 1)];
+                const selectedPerk = PERK_OPTIONS[Phaser.Math.Between(0, PERK_OPTIONS.length - 1)];
                 
                 // Highlight the selected perk
-                const selectedContainer = buttons[perks.indexOf(selectedPerk)];
-                const bg = selectedContainer.getAt(0); // Background rectangle
-                bg.setStrokeStyle(4, 0xff0000);
+                const selectedContainer = buttons[PERK_OPTIONS.indexOf(selectedPerk)];
+                selectedContainer.setSelected(true);
                 
                 // Apply the perk and close the menu after a short delay
                 this.time.delayedCall(500, () => {
@@ -919,63 +983,22 @@ class GameHUD extends Phaser.Scene {
             }
         ).setOrigin(0.5);
         
-        // Available perks
-        const perks = [
-            { type: 'speed', name: 'Speed Boost', description: '20% movement speed increase' },
-            { type: 'fireRate', name: 'Rapid Fire', description: '20% faster firing rate' },
-            { type: 'damage', name: 'Heavy Hitter', description: '50% damage increase' }
-        ];
-        
         // Create perk selection buttons
         const buttons = [];
-        perks.forEach((perk, index) => {
-            const x = this.cameras.main.width / 2 + (index - 1) * 250;
-            const y = this.cameras.main.height / 2;
-            
-            const container = this.add.container(x, y);
-            
-            // Icon background
-            const bg = this.add.rectangle(0, 0, 200, 240, 0x333333, 0.8)
-                .setStrokeStyle(2, 0xffffff);
-            
-            // Perk icon
-            const icon = this.add.image(0, -70, `perk-icon-${perk.type}`)
-                .setScale(2);
-            
-            // Perk name
-            const nameText = this.add.text(0, 0, perk.name, {
-                fontFamily: 'Arial',
-                fontSize: '24px',
-                color: '#ffffff'
-            }).setOrigin(0.5);
-            
-            // Perk description
-            const descText = this.add.text(0, 40, perk.description, {
-                fontFamily: 'Arial',
-                fontSize: '16px',
-                color: '#ffffff',
-                wordWrap: { width: 180 }
-            }).setOrigin(0.5);
-            
-            container.add([bg, icon, nameText, descText]);
-            
-            // Make interactive
-            bg.setInteractive({ useHandCursor: true })
-                .on('pointerover', () => bg.setStrokeStyle(4, 0xff0000))
-                .on('pointerout', () => bg.setStrokeStyle(2, 0xffffff))
-                .on('pointerdown', () => {
-                    // Apply perk to player
-                    player.applyPerk(perk);
-                    
-                    // Remove perk selection UI
-                    backdrop.destroy();
-                    title.destroy();
-                    buttons.forEach(b => b.destroy());
-                    
-                    // Resume game - use the active game scene instead of hardcoding
-                    this.scene.resume(this.activeGameScene);
-                });
-                
+        PERK_OPTIONS.forEach((perk, index) => {
+            const x = this.cameras.main.width / 2 + (index - 1) * 320;
+            const y = this.cameras.main.height / 2 + 40;
+
+            const container = createPerkSelectionCard(this, perk, x, y, (selectedPerk) => {
+                player.applyPerk(selectedPerk.type);
+
+                backdrop.destroy();
+                title.destroy();
+                buttons.forEach(b => b.destroy());
+
+                this.scene.resume(this.activeGameScene);
+            });
+
             buttons.push(container);
         });
         
