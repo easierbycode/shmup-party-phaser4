@@ -1028,7 +1028,7 @@ class GameScene extends Phaser.Scene {
         // Create game groups
         this.baddies = this.add.group();
         this.players = this.physics.add.group();
-        this.powerups = this.add.group();
+        this.powerups = this.physics.add.group(); // physics group so player-vs-powerup overlap can collide
         this.bloodSplatters = this.add.group({ classType: BloodSplatter });
         
         // Camera setup
@@ -1095,7 +1095,8 @@ class GameScene extends Phaser.Scene {
         });
         
         // Player vs powerups
-        this.physics.add.overlap(this.players, this.powerups, (powerup, player) => {
+        // Phaser passes (object1Member, object2Member): players is object1, powerups is object2.
+        this.physics.add.overlap(this.players, this.powerups, (player, powerup) => {
             player.playerVsPowerup(player, powerup);
         });
         
