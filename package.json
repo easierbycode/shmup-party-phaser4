@@ -1,0 +1,13 @@
+{
+  "name": "shmup-party-phaser4",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sh'M↑ Party (Phaser 4) — multiplayer top-down shooter",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
+}
