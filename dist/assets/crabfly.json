@@ -1,0 +1,524 @@
+{
+	"textures": [
+		{
+			"image": "crabfly.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 64,
+				"h": 1421
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "crabfly-die-0000",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 62,
+						"h": 60
+					},
+					"frame": {
+						"x": 1,
+						"y": 1,
+						"w": 62,
+						"h": 60
+					}
+				},
+				{
+					"filename": "crabfly-move-0000",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 62,
+						"h": 60
+					},
+					"frame": {
+						"x": 1,
+						"y": 63,
+						"w": 62,
+						"h": 60
+					}
+				},
+				{
+					"filename": "crabfly-move-0001",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 62,
+						"h": 59
+					},
+					"frame": {
+						"x": 1,
+						"y": 125,
+						"w": 62,
+						"h": 59
+					}
+				},
+				{
+					"filename": "crabfly-move-0002",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 62,
+						"h": 58
+					},
+					"frame": {
+						"x": 1,
+						"y": 186,
+						"w": 62,
+						"h": 58
+					}
+				},
+				{
+					"filename": "crabfly-move-0010",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 4,
+						"w": 62,
+						"h": 58
+					},
+					"frame": {
+						"x": 1,
+						"y": 246,
+						"w": 62,
+						"h": 58
+					}
+				},
+				{
+					"filename": "crabfly-move-0013",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 4,
+						"w": 62,
+						"h": 58
+					},
+					"frame": {
+						"x": 1,
+						"y": 306,
+						"w": 62,
+						"h": 58
+					}
+				},
+				{
+					"filename": "crabfly-move-0015",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 3,
+						"w": 62,
+						"h": 58
+					},
+					"frame": {
+						"x": 1,
+						"y": 366,
+						"w": 62,
+						"h": 58
+					}
+				},
+				{
+					"filename": "crabfly-move-0003",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 62,
+						"h": 57
+					},
+					"frame": {
+						"x": 1,
+						"y": 426,
+						"w": 62,
+						"h": 57
+					}
+				},
+				{
+					"filename": "crabfly-move-0006",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 62,
+						"h": 57
+					},
+					"frame": {
+						"x": 1,
+						"y": 485,
+						"w": 62,
+						"h": 57
+					}
+				},
+				{
+					"filename": "crabfly-move-0014",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 5,
+						"w": 62,
+						"h": 57
+					},
+					"frame": {
+						"x": 1,
+						"y": 544,
+						"w": 62,
+						"h": 57
+					}
+				},
+				{
+					"filename": "crabfly-move-0004",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 62,
+						"h": 56
+					},
+					"frame": {
+						"x": 1,
+						"y": 603,
+						"w": 62,
+						"h": 56
+					}
+				},
+				{
+					"filename": "crabfly-move-0005",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 62,
+						"h": 56
+					},
+					"frame": {
+						"x": 1,
+						"y": 661,
+						"w": 62,
+						"h": 56
+					}
+				},
+				{
+					"filename": "crabfly-move-0011",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 6,
+						"w": 62,
+						"h": 56
+					},
+					"frame": {
+						"x": 1,
+						"y": 719,
+						"w": 62,
+						"h": 56
+					}
+				},
+				{
+					"filename": "crabfly-move-0012",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 6,
+						"w": 62,
+						"h": 56
+					},
+					"frame": {
+						"x": 1,
+						"y": 777,
+						"w": 62,
+						"h": 56
+					}
+				},
+				{
+					"filename": "crabfly-move-0007",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 61,
+						"h": 60
+					},
+					"frame": {
+						"x": 1,
+						"y": 835,
+						"w": 61,
+						"h": 60
+					}
+				},
+				{
+					"filename": "crabfly-die-0001",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 3,
+						"w": 61,
+						"h": 58
+					},
+					"frame": {
+						"x": 1,
+						"y": 897,
+						"w": 61,
+						"h": 58
+					}
+				},
+				{
+					"filename": "crabfly-move-0008",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 1,
+						"w": 60,
+						"h": 61
+					},
+					"frame": {
+						"x": 1,
+						"y": 957,
+						"w": 60,
+						"h": 61
+					}
+				},
+				{
+					"filename": "crabfly-move-0009",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 3,
+						"w": 60,
+						"h": 59
+					},
+					"frame": {
+						"x": 1,
+						"y": 1020,
+						"w": 60,
+						"h": 59
+					}
+				},
+				{
+					"filename": "crabfly-die-0002",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 5,
+						"w": 58,
+						"h": 53
+					},
+					"frame": {
+						"x": 1,
+						"y": 1081,
+						"w": 58,
+						"h": 53
+					}
+				},
+				{
+					"filename": "crabfly-die-0004",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 3,
+						"w": 54,
+						"h": 58
+					},
+					"frame": {
+						"x": 1,
+						"y": 1136,
+						"w": 54,
+						"h": 58
+					}
+				},
+				{
+					"filename": "crabfly-die-0005",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 4,
+						"w": 54,
+						"h": 56
+					},
+					"frame": {
+						"x": 1,
+						"y": 1196,
+						"w": 54,
+						"h": 56
+					}
+				},
+				{
+					"filename": "crabfly-die-0003",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 6,
+						"w": 54,
+						"h": 53
+					},
+					"frame": {
+						"x": 1,
+						"y": 1254,
+						"w": 54,
+						"h": 53
+					}
+				},
+				{
+					"filename": "crabfly-die-0007",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 2,
+						"w": 53,
+						"h": 54
+					},
+					"frame": {
+						"x": 1,
+						"y": 1309,
+						"w": 53,
+						"h": 54
+					}
+				},
+				{
+					"filename": "crabfly-die-0006",
+					"rotated": false,
+					"trimmed": true,
+					"sourceSize": {
+						"w": 62,
+						"h": 62
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 2,
+						"w": 52,
+						"h": 55
+					},
+					"frame": {
+						"x": 1,
+						"y": 1365,
+						"w": 52,
+						"h": 55
+					}
+				}
+			]
+		}
+	],
+	"meta": {
+		"app": "https://www.codeandweb.com/texturepacker",
+		"version": "3.0",
+		"smartupdate": "$TexturePacker:SmartUpdate:fa9bb90fae5bc47f7a5caa0bce9f566e:8149e61fb38ddaca868be77c842e926d:8299e58acdc9f4ef26529e27d9977e45$"
+	}
+}

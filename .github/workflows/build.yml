@@ -1,0 +1,58 @@
+name: Build
+
+# Rebuilds the static bundle (dist/ + shmup-party-phaser4.zip) whenever the game
+# source changes, and commits the result back to the branch. The CMG Launcher
+# downloads that zip and checks this repo's latest commit to offer "Update", so
+# keeping the built artifacts in sync with source on every push is what makes the
+# in-launcher update flow work.
+#
+# The commit-back is guarded two ways so it can't loop: the commit message carries
+# [skip ci] (GitHub skips the run), and we only commit when the build output
+# actually changed.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "assets/**"
+      - "phaser.js"
+      - "index.html"
+      - "build.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/build.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: Commit rebuilt artifacts
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dist shmup-party-phaser4.zip
+          if git diff --cached --quiet; then
+            echo "No build output changes — nothing to commit."
+          else
+            git commit -m "build: rebuild dist + zip [skip ci]"
+            git push
+          fi
