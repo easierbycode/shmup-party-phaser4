@@ -395,9 +395,88 @@ function createPerkSelectionCard(scene, perk, x, y, onSelect) {
             onSelect(perk, container);
         });
 
+    // Exposed so keyboard/gamepad nav can keep its cursor in sync with mouse hover.
+    container.focusTarget = panel;
+
     container.add([panel, iconFrame, icon, lineSelector, nameText, descText]);
 
     return container;
+}
+
+// Adds gamepad + keyboard navigation to a horizontal row of perk cards.
+// `padIndex` restricts gamepad input to a single physical pad (the player who
+// levelled up); pass `null` to accept any connected pad. `onConfirm(index)` is
+// invoked once with the chosen card index. Returns an idempotent cleanup().
+function setupPerkGamepadNav(scene, padIndex, cards, onConfirm) {
+    let index = 0;
+    let confirmed = false;
+    // Require the stick to return to neutral once before the first analog nav step,
+    // so a movement stick still held from gameplay doesn't scrub the selection on open.
+    let stickReady = false;
+
+    const focus = (i) => {
+        index = Phaser.Math.Wrap(i, 0, cards.length);
+        cards.forEach((card, j) => card.setSelected(j === index));
+    };
+
+    const confirm = () => {
+        if (confirmed) return;
+        confirmed = true;
+        cleanup();
+        onConfirm(index);
+    };
+
+    const onPadDown = (pad, button) => {
+        if (padIndex != null && pad.index !== padIndex) return;
+        switch (button.index) {
+            case 14: focus(index - 1); break; // d-pad left
+            case 15: focus(index + 1); break; // d-pad right
+            case 0:  confirm(); break;        // A / cross
+        }
+    };
+
+    const onKeyLeft = () => focus(index - 1);
+    const onKeyRight = () => focus(index + 1);
+    const onKeyConfirm = () => confirm();
+
+    const onUpdate = () => {
+        // Analog left-stick (horizontal) navigation with a release debounce.
+        const pad = padIndex != null
+            ? scene.input.gamepad.getPad(padIndex)
+            : scene.input.gamepad.pad1;
+        const x = pad ? pad.leftStick.x : 0;
+        if (stickReady && Math.abs(x) > 0.5) {
+            focus(index + (x > 0 ? 1 : -1));
+            stickReady = false;
+        } else if (Math.abs(x) < 0.3) {
+            stickReady = true;
+        }
+    };
+
+    const cleanup = () => {
+        scene.input.gamepad.off('down', onPadDown);
+        scene.input.keyboard.off('keydown-LEFT', onKeyLeft);
+        scene.input.keyboard.off('keydown-RIGHT', onKeyRight);
+        scene.input.keyboard.off('keydown-ENTER', onKeyConfirm);
+        scene.input.keyboard.off('keydown-SPACE', onKeyConfirm);
+        scene.events.off('update', onUpdate);
+    };
+
+    scene.input.gamepad.on('down', onPadDown);
+    scene.input.keyboard.on('keydown-LEFT', onKeyLeft);
+    scene.input.keyboard.on('keydown-RIGHT', onKeyRight);
+    scene.input.keyboard.on('keydown-ENTER', onKeyConfirm);
+    scene.input.keyboard.on('keydown-SPACE', onKeyConfirm);
+    scene.events.on('update', onUpdate);
+
+    // Keep the nav cursor in sync with mouse hover so confirming always targets the
+    // highlighted card (these listeners die with the cards when the overlay closes).
+    cards.forEach((card, i) => {
+        if (card.focusTarget) card.focusTarget.on('pointerover', () => focus(i));
+    });
+
+    focus(0);
+    return cleanup;
 }
 
 class MenuScene extends Phaser.Scene {
@@ -420,32 +499,29 @@ class MenuScene extends Phaser.Scene {
             .setOrigin(0.5)
             .setDepth(20);
         
-        // Menu buttons
+        // Menu buttons (navigable by mouse, keyboard, and gamepad)
         const buttonLeft = 0;
         const firstButtonY = height * 0.42;
         const buttonGap = 180;
 
-        this.createButton(buttonLeft, firstButtonY, 'Campaign Mode', () => {
+        this.menuButtons = [];
+        this.menuIndex = 0;
+
+        this.menuButtons.push(this.createButton(buttonLeft, firstButtonY, 'Campaign Mode', () => {
             this.scene.start('CampaignScene');
-        });
-        
-        this.createButton(buttonLeft, firstButtonY + buttonGap, 'Survival Mode', () => {
+        }));
+
+        this.menuButtons.push(this.createButton(buttonLeft, firstButtonY + buttonGap, 'Survival Mode', () => {
             this.scene.start('SurvivalScene');
-        });
-        
-        this.createButton(buttonLeft, firstButtonY + buttonGap * 2, 'Options', () => {
+        }));
+
+        this.menuButtons.push(this.createButton(buttonLeft, firstButtonY + buttonGap * 2, 'Options', () => {
             // Options scene would go here
-        });
-        
-        // Detect gamepad connections
-        this.input.gamepad.on('connected', (pad) => {
-            this.gamepad = pad;
-        });
-        
-        // Listen for keyboard input
-        this.input.keyboard.on('keydown-ENTER', () => {
-            this.scene.start('CampaignScene');
-        });
+        }));
+
+        // Highlight the first entry and wire up keyboard + gamepad navigation
+        this.focusMenuButton(0);
+        this.setupMenuInput();
     }
     
     setupAttractMode() {
@@ -679,18 +755,135 @@ class MenuScene extends Phaser.Scene {
             .setDepth(22)
             .setInteractive({ useHandCursor: true });
 
-        hitArea
-            .on('pointerover', () => {
+        const setFocused = (isFocused) => {
+            if (isFocused) {
                 button.setTint(0xbfffff);
                 label.setColor('#1a7690');
-            })
-            .on('pointerout', () => {
+            } else {
                 button.clearTint();
                 label.setColor('#145a70');
-            })
+            }
+        };
+
+        const control = { button, label, hitArea, setFocused, activate: callback };
+
+        hitArea
+            .on('pointerover', () => this.focusMenuButton(this.menuButtons.indexOf(control)))
             .on('pointerdown', callback);
 
-        return { button, label, hitArea };
+        return control;
+    }
+
+    focusMenuButton(index) {
+        if (!this.menuButtons || this.menuButtons.length === 0) return;
+        this.menuIndex = Phaser.Math.Wrap(index, 0, this.menuButtons.length);
+        this.menuButtons.forEach((btn, i) => btn.setFocused(i === this.menuIndex));
+    }
+
+    activateMenuSelection() {
+        const btn = this.menuButtons && this.menuButtons[this.menuIndex];
+        if (btn && typeof btn.activate === 'function') btn.activate();
+    }
+
+    setupMenuInput() {
+        // Gamepads that have joined the demo as players are tracked here so their
+        // movement doesn't also scrub the menu cursor.
+        this.joinedPads = new Set();
+        // Require the stick to reach neutral once before the first analog nav step.
+        this.menuStickReady = false;
+
+        // Keyboard navigation
+        this.input.keyboard.on('keydown-UP', () => this.focusMenuButton(this.menuIndex - 1));
+        this.input.keyboard.on('keydown-DOWN', () => this.focusMenuButton(this.menuIndex + 1));
+        this.input.keyboard.on('keydown-ENTER', () => this.activateMenuSelection());
+        this.input.keyboard.on('keydown-SPACE', () => this.activateMenuSelection());
+
+        // Gamepad navigation + "press L1 + R1 to join" handling
+        this.input.gamepad.on('down', this.onMenuPadDown, this);
+    }
+
+    onMenuPadDown(pad, button) {
+        const idx = button.index;
+
+        // L1 (4) + R1 (5) chord during the demo adds another player to the party.
+        if ((idx === 4 || idx === 5) &&
+            pad.buttons[4] && pad.buttons[4].pressed &&
+            pad.buttons[5] && pad.buttons[5].pressed) {
+            this.tryAddPlayer(pad);
+            return;
+        }
+
+        // Pads already controlling a player drive their character, not the menu —
+        // so an in-demo player tapping A won't accidentally launch a game mode.
+        if (this.joinedPads.has(pad.index)) return;
+
+        // South / A button confirms the highlighted menu entry.
+        if (idx === 0) {
+            this.activateMenuSelection();
+            return;
+        }
+
+        // D-pad up / down move the menu cursor.
+        if (idx === 12) this.focusMenuButton(this.menuIndex - 1);
+        else if (idx === 13) this.focusMenuButton(this.menuIndex + 1);
+    }
+
+    tryAddPlayer(pad) {
+        // One player per physical gamepad, capped so the attract screen stays sane.
+        const MAX_DEMO_PLAYERS = 4;
+        if (this.joinedPads.has(pad.index)) return;
+        if (this.players.getLength() >= MAX_DEMO_PLAYERS) return;
+
+        this.joinedPads.add(pad.index);
+        this.addSecondPlayer(pad);
+    }
+
+    addSecondPlayer(pad) {
+        // Spawn a real, gamepad-controlled player next to the demo player.
+        const offset = this.players.getLength() * 90;
+        const newPlayer = new Player(
+            pad,
+            this,
+            Phaser.Math.Clamp(this.demoPlayer.x + 120 + offset, 80, this.cameras.main.width - 80),
+            this.demoPlayer.y
+        );
+        newPlayer.setDepth(5);
+
+        this.players.add(newPlayer);
+        this.targets.add(newPlayer);
+
+        // Rumble + on-screen confirmation that a player joined.
+        if (pad.vibration && typeof pad.vibration.playEffect === 'function') {
+            pad.vibration.playEffect('dual-rumble', {
+                startDelay: 0,
+                duration: 200,
+                weakMagnitude: 0.6,
+                strongMagnitude: 0.4
+            });
+        }
+
+        const playerNumber = this.players.getLength();
+        const joinText = this.add.text(
+            this.cameras.main.width / 2,
+            this.cameras.main.height * 0.78,
+            `PLAYER ${playerNumber} JOINED`,
+            {
+                fontFamily: 'Arial Black, Impact, sans-serif',
+                fontSize: '40px',
+                color: '#9fefff',
+                stroke: '#041820',
+                strokeThickness: 4
+            }
+        ).setOrigin(0.5).setDepth(30);
+
+        this.tweens.add({
+            targets: joinText,
+            alpha: 0,
+            y: joinText.y - 60,
+            duration: 1800,
+            ease: 'Power2',
+            onComplete: () => joinText.destroy()
+        });
     }
     
     update() {
@@ -718,18 +911,21 @@ class MenuScene extends Phaser.Scene {
             }
         });
         
-        // Process player bullet collisions with enemies
-        if (this.demoPlayer && this.demoPlayer.active) {
+        // Process every player's bullet collisions with enemies (demo player plus
+        // any humans who joined via L1 + R1)
+        this.players.getChildren().forEach(player => {
+            if (!player.active) return;
+
             // Loop through all the player's weapons to check their bullets
-            this.demoPlayer.weapons.forEach(weapon => {
+            player.weapons.forEach(weapon => {
                 if (weapon.bullets) {
-                    const activeBullets = weapon.bullets.getChildren().filter(bullet => 
+                    const activeBullets = weapon.bullets.getChildren().filter(bullet =>
                         bullet.active && bullet.visible);
-                    
+
                     if (activeBullets.length > 0) {
                         this.physics.overlap(activeBullets, this.baddies, (bullet, baddie) => {
                             if (!baddie.visible || baddie.blinking) return;
-                            
+
                             // Handle bullet behavior
                             if (typeof bullet.damage === 'function') {
                                 bullet.damage(bullet, baddie);
@@ -737,7 +933,7 @@ class MenuScene extends Phaser.Scene {
                                 bullet.setVisible(false);
                                 bullet.setActive(false);
                             }
-                            
+
                             // Create blood splat effect
                             const bloodSplat = this.add.sprite(baddie.x, baddie.y, 'blood-splat');
                             bloodSplat.setDepth(baddie.depth - 1);
@@ -745,7 +941,7 @@ class MenuScene extends Phaser.Scene {
                             bloodSplat.once('animationcomplete', () => {
                                 bloodSplat.destroy();
                             });
-                            
+
                             // FORCE DESTROY enemy - don't rely on damage method
                             // for attract mode, we just want visual effect
                             baddie.onDestroy();
@@ -754,7 +950,18 @@ class MenuScene extends Phaser.Scene {
                     }
                 }
             });
-        }
+
+            // Collect powerups. One-shot per-frame test of this player sprite against
+            // the powerups physics group (a persistent collider would leak per spawn,
+            // and a plain-group overlap silently no-ops in this Phaser build).
+            if (this.powerups.getLength() > 0) {
+                this.physics.overlap(player, this.powerups, (pl, powerup) => {
+                    if (typeof pl.playerVsPowerup === 'function') {
+                        pl.playerVsPowerup(pl, powerup);
+                    }
+                });
+            }
+        });
         
         // Create occasional powerups for visual interest
         if (Math.random() < 0.001) {
@@ -766,16 +973,19 @@ class MenuScene extends Phaser.Scene {
             
             const powerup = this.physics.add.image(x, y, randomType);
             powerup.setDepth(2);
-            this.physics.add.overlap(this.demoPlayer, powerup, () => {
-                this.demoPlayer.playerVsPowerup(this.demoPlayer, powerup);
-            });
+            // Collected via the one-shot per-player overlap in the players loop above.
+            this.powerups.add(powerup);
         }
-        
-        // Check for gamepad input to start the game
-        if (this.gamepad) {
-            if (this.gamepad.A || this.gamepad.buttons[0].pressed) {
-                this.scene.start('CampaignScene');
-            }
+
+        // Analog left-stick (vertical) menu navigation with a release debounce.
+        // Uses the first connected pad that hasn't joined the demo as a player.
+        const navPad = this.input.gamepad.getAll().find(p => p && !this.joinedPads.has(p.index));
+        const stickY = navPad ? navPad.leftStick.y : 0;
+        if (this.menuStickReady && Math.abs(stickY) > 0.5) {
+            this.focusMenuButton(this.menuIndex + (stickY > 0 ? 1 : -1));
+            this.menuStickReady = false;
+        } else if (Math.abs(stickY) < 0.3) {
+            this.menuStickReady = true;
         }
     }
 
@@ -894,7 +1104,11 @@ class GameHUD extends Phaser.Scene {
         // Create player health displays
         this.healthDisplays = [];
         
-        // Events from main scene
+        // Events from main scene. Remove first so a game-scene restart (which
+        // re-launches this HUD on the same persistent emitter) doesn't stack handlers.
+        this.events.off('showWaveText', this.showWaveText, this);
+        this.events.off('updatePlayerHealth', this.updatePlayerHealth, this);
+        this.events.off('showPerkSelection', this.showPerkSelection, this);
         this.events.on('showWaveText', this.showWaveText, this);
         this.events.on('updatePlayerHealth', this.updatePlayerHealth, this);
         this.events.on('showPerkSelection', this.showPerkSelection, this);
@@ -962,6 +1176,31 @@ class GameHUD extends Phaser.Scene {
     }
     
     showPerkSelection(player) {
+        // Serialize selections: if two players level up at once, queue them and show
+        // one overlay at a time so they don't stack overlays / nav listeners and so
+        // the game scene stays paused until every pending selection is resolved.
+        if (!this._perkQueue) this._perkQueue = [];
+        this._perkQueue.push(player);
+        if (!this._perkOpen) this._openNextPerkSelection();
+    }
+
+    _openNextPerkSelection() {
+        if (this._perkQueue.length === 0) {
+            if (this._perkOpen) {
+                this._perkOpen = false;
+                this.scene.resume(this.activeGameScene);
+            }
+            return;
+        }
+
+        const player = this._perkQueue.shift();
+
+        // Pause the game scene once, on the first selection in the batch.
+        if (!this._perkOpen) {
+            this._perkOpen = true;
+            this.scene.pause(this.activeGameScene);
+        }
+
         // Create a semi-transparent backdrop
         const backdrop = this.add.rectangle(
             this.cameras.main.width / 2,
@@ -970,7 +1209,7 @@ class GameHUD extends Phaser.Scene {
             this.cameras.main.height,
             0x000000, 0.7
         );
-        
+
         // Title
         const title = this.add.text(
             this.cameras.main.width / 2,
@@ -982,28 +1221,47 @@ class GameHUD extends Phaser.Scene {
                 color: '#ffffff'
             }
         ).setOrigin(0.5);
-        
+
         // Create perk selection buttons
         const buttons = [];
+        let finalized = false;
+        let cleanupNav = () => {};
+
+        const finalize = (perkType) => {
+            if (finalized) return;
+            finalized = true;
+            cleanupNav();
+
+            player.applyPerk(perkType);
+
+            backdrop.destroy();
+            title.destroy();
+            buttons.forEach(b => b.destroy());
+
+            // Show the next queued selection, or resume the game once the queue drains.
+            this._openNextPerkSelection();
+        };
+
         PERK_OPTIONS.forEach((perk, index) => {
             const x = this.cameras.main.width / 2 + (index - 1) * 320;
             const y = this.cameras.main.height / 2 + 40;
 
             const container = createPerkSelectionCard(this, perk, x, y, (selectedPerk) => {
-                player.applyPerk(selectedPerk.type);
-
-                backdrop.destroy();
-                title.destroy();
-                buttons.forEach(b => b.destroy());
-
-                this.scene.resume(this.activeGameScene);
+                finalize(selectedPerk.type);
             });
 
             buttons.push(container);
         });
-        
-        // Pause the current game scene - use the active game scene instead of hardcoding
-        this.scene.pause(this.activeGameScene);
+
+        // Gamepad + keyboard navigation. The level-up player's pad drives it; if we
+        // can't resolve a specific pad we accept any connected pad. This runs on the
+        // (still-active) HUD scene, since the paused game scene won't poll input.
+        const padIndex = player.gamepad && typeof player.gamepad.index === 'number'
+            ? player.gamepad.index
+            : null;
+        cleanupNav = setupPerkGamepadNav(this, padIndex, buttons, (selectedIndex) => {
+            finalize(PERK_OPTIONS[selectedIndex].type);
+        });
     }
 }
 
