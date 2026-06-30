@@ -951,9 +951,9 @@ class MenuScene extends Phaser.Scene {
                 }
             });
 
-            // Collect powerups. One-shot per-frame test of this player sprite against
-            // the powerups physics group (a persistent collider would leak per spawn,
-            // and a plain-group overlap silently no-ops in this Phaser build).
+            // Collect powerups with a one-shot per-frame test of this player sprite
+            // against the powerups physics group, rather than a per-spawn persistent
+            // collider (which would leak one collider per spawned powerup).
             if (this.powerups.getLength() > 0) {
                 this.physics.overlap(player, this.powerups, (pl, powerup) => {
                     if (typeof pl.playerVsPowerup === 'function') {
@@ -1288,6 +1288,13 @@ class GameScene extends Phaser.Scene {
         this.players = this.physics.add.group();
         this.powerups = this.add.group();
         this.bloodSplatters = this.add.group({ classType: BloodSplatter });
+
+        // Level-restart bookkeeping. Players don't respawn individually; once every
+        // player that joined is dead, the level restarts (see update()). These reset
+        // on every (re)start because create() runs again on scene.restart().
+        this.playersHaveSpawned = false;
+        this.restarting = false;
+        this._padPlayers = new Set();
         
         // Camera setup
         this.mid = new Phaser.Math.Vector2();
@@ -1325,18 +1332,26 @@ class GameScene extends Phaser.Scene {
     }
     
     setupCollisions() {
-        // Player vs enemies
-        this.physics.add.collider(this.players, this.baddies, (player, enemy) => {
+        // Player vs enemies.
+        // Don't rely on positional callback args here: `this.players` is a physics
+        // group but `this.baddies` is a plain group, so Arcade flattens baddies to
+        // sprites and actually invokes the callback as (enemy, player) — the reverse
+        // of the (players, baddies) argument order. Resolve the player explicitly via
+        // the group so the damage/knockback land on the player, not the enemy.
+        this.physics.add.collider(this.players, this.baddies, (objA, objB) => {
+            const player = this.players.contains(objA) ? objA : objB;
+            const enemy = player === objA ? objB : objA;
+
             player.damage(player, { damagePoints: 1 });
-            
+
             // Update HUD
             this.hud.events.emit('updatePlayerHealth', this.players.getChildren().indexOf(player), player.health, 3);
-            
-            // Knockback effect
+
+            // Knockback effect (push the player away from the enemy)
             const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, player.x, player.y);
             player.body.velocity.x = Math.cos(angle) * 400;
             player.body.velocity.y = Math.sin(angle) * 400;
-            
+
             // Briefly make the player invulnerable
             player.setTint(0xff0000);
             player.invulnerable = true;
@@ -1347,8 +1362,9 @@ class GameScene extends Phaser.Scene {
                     player.invulnerable = false;
                 }
             });
-        }, (player, enemy) => {
-            // Collision callback to check if player is invulnerable
+        }, (objA, objB) => {
+            // Process callback: skip the collision while the player is invulnerable.
+            const player = this.players.contains(objA) ? objA : objB;
             return !player.invulnerable;
         });
         
@@ -1371,30 +1387,48 @@ class GameScene extends Phaser.Scene {
     }
     
     setupGamepadListeners() {
-        this.input.gamepad.on('connected', (gamepad) => {
-            // Create a new player for this gamepad
-            const playerIndex = this.players.getLength();
-            const offsetX = playerIndex % 2 === 0 ? -100 : 100;
-            const offsetY = playerIndex < 2 ? -100 : 100;
-            
-            const newPlayer = new Player(
-                gamepad, 
-                this, 
-                (WIDTH / 2) + offsetX, 
-                (HEIGHT / 2) + offsetY
-            );
-            
-            this.players.add(newPlayer);
-            
-            // Initialize health display for this player
-            this.hud.events.emit('updatePlayerHealth', playerIndex, newPlayer.health, 3);
-            
-            // If this is the first player, start the game
-            if (playerIndex === 0) {
-                this.player = newPlayer;
-                this.startGame();
-            }
+        // Spawn a player whenever a new pad connects.
+        this.input.gamepad.on('connected', (gamepad) => this.spawnPlayerForPad(gamepad));
+
+        // After a scene restart the gamepad plugin keeps its pads (shutdown doesn't
+        // clear them), so 'connected' won't re-fire — spawn for any pad already
+        // present. Deferred one tick so the HUD has booted to receive the health
+        // events. spawnPlayerForPad dedupes per pad, so this never double-spawns.
+        this.time.delayedCall(0, () => {
+            this.input.gamepad.getAll().forEach((pad) => {
+                if (pad) this.spawnPlayerForPad(pad);
+            });
         });
+    }
+
+    spawnPlayerForPad(gamepad) {
+        // One player per physical pad (guards against 'connected' + getAll() races
+        // and against any duplicate 'connected' events).
+        if (this._padPlayers.has(gamepad.index)) return;
+        this._padPlayers.add(gamepad.index);
+
+        const playerIndex = this.players.getLength();
+        const offsetX = playerIndex % 2 === 0 ? -100 : 100;
+        const offsetY = playerIndex < 2 ? -100 : 100;
+
+        const newPlayer = new Player(
+            gamepad,
+            this,
+            (WIDTH / 2) + offsetX,
+            (HEIGHT / 2) + offsetY
+        );
+
+        this.players.add(newPlayer);
+        this.playersHaveSpawned = true;
+
+        // Initialize health display for this player
+        this.hud.events.emit('updatePlayerHealth', playerIndex, newPlayer.health, 3);
+
+        // If this is the first player, start the game
+        if (playerIndex === 0) {
+            this.player = newPlayer;
+            this.startGame();
+        }
     }
     
     startGame() {
@@ -1441,10 +1475,27 @@ class GameScene extends Phaser.Scene {
         // Pass to HUD scene
         this.hud.events.emit('showPerkSelection', player);
     }
-    
+
+    handleAllPlayersDead() {
+        // Brief "GAME OVER" beat, then restart the current level. create() re-runs on
+        // restart, resetting the restart flags and respawning players from the pads
+        // that are still connected.
+        this.showWaveText('GAME OVER', 0xff0000);
+        this.time.delayedCall(1800, () => this.scene.restart());
+    }
+
     update(time, delta) {
         // Get active players
         const activePlayers = this.players.getMatching('active', true);
+
+        // Players don't respawn individually; once everyone who joined is dead,
+        // restart the current level.
+        if (this.playersHaveSpawned && !this.restarting && activePlayers.length === 0) {
+            this.restarting = true;
+            this.handleAllPlayersDead();
+            return;
+        }
+
         if (activePlayers.length) {
             // Process player bullet collisions with enemies
             activePlayers.forEach(player => {
