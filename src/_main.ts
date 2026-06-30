@@ -216,6 +216,12 @@ class PreloadScene extends Phaser.Scene {
             'zombie.png',
             'zombie.json'
         );
+
+        this.load.atlas(
+            'duke',
+            'duke_atlas.png',
+            'duke_atlas.json'
+        );
         
         // Load images
         this.load.image("bg", "scorched-earth.png");
@@ -595,6 +601,16 @@ class MenuScene extends Phaser.Scene {
                 repeat: -1
             });
         }
+
+        // Duke walk animation
+        if (!this.anims.exists('duke.walk')) {
+            this.anims.create({
+                key: 'duke.walk',
+                frames: this.anims.generateFrameNames('duke', { prefix: 'duke_', start: 0, end: 3 }),
+                frameRate: 12,
+                repeat: -1
+            });
+        }
     }
     
     createDemoPlayer() {
@@ -854,13 +870,19 @@ class MenuScene extends Phaser.Scene {
     addSecondPlayer(pad) {
         // Spawn a real, gamepad-controlled player next to the demo player.
         const offset = this.players.getLength() * 90;
+        const key = this.players.getLength() === 1 ? 'duke' : 'player';
         const newPlayer = new Player(
             pad,
             this,
             Phaser.Math.Clamp(this.demoPlayer.x + 120 + offset, 80, this.cameras.main.width - 80),
-            this.demoPlayer.y
+            this.demoPlayer.y,
+            key
         );
         newPlayer.setDepth(5);
+
+        if (key === 'duke') {
+            newPlayer.play('duke.walk');
+        }
 
         this.players.add(newPlayer);
         this.targets.add(newPlayer);
