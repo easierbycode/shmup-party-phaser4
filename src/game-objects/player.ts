@@ -92,6 +92,11 @@ export default class Player extends BaseEntity {
     gamepad: Phaser.Input.Gamepad.Gamepad;
     gamepadVibration: GamepadHapticActuator | null;
     inputEnabled: boolean = true;
+    // Players start at 3 HP (the value the HUD bars and healthpack cap assume).
+    // Without this, BaseEntity leaves health undefined and damage yields NaN, so
+    // players never actually die.
+    health = 3;
+    maxHealth = 3;
     weapons: Weapon[] = [];
     level = 1;
     perks = [];
