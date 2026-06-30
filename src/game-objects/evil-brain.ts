@@ -47,12 +47,17 @@ class EvilBrainEye extends BaseEntity {
         });
     }
     
-    destroy() {
-        let { halfHeight, halfWidth, x, y } = this.body;
-        let explosion = new EvilBrainEyeExplosion(this.scene, x + halfWidth, y + halfHeight);
-        explosion.on('animationcomplete-default', () => explosion.destroy());
-        explosion.play('default');
-        super.destroy();
+    destroy(fromScene?: boolean) {
+        // Only spawn the eye explosion on an in-game death. During scene
+        // shutdown (fromScene) the physics body is already gone, so this.body
+        // is undefined and there's no point adding objects to a dying scene.
+        if (this.body && !fromScene) {
+            let { halfHeight, halfWidth, x, y } = this.body;
+            let explosion = new EvilBrainEyeExplosion(this.scene, x + halfWidth, y + halfHeight);
+            explosion.on('animationcomplete-default', () => explosion.destroy());
+            explosion.play('default');
+        }
+        super.destroy(fromScene);
     }
 }
 
