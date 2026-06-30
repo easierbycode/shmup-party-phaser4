@@ -105,6 +105,11 @@ export default class Player extends BaseEntity {
     fireblast = null;
     experience = 0;
     availablePerks = ['damage', 'speed', 'fireRate', 'health', 'shield'];
+    // Keyboard control, used on the CMG cabinet whose gamepad→keyboard shim has no
+    // right stick. Off by default — the demo bot and pure-gamepad players leave these
+    // unset and behave exactly as before. See enableKeyboardControl().
+    keyboardKeys = null;
+    autoAim: boolean = false;
 
     constructor(
         gamepad,
@@ -194,25 +199,66 @@ export default class Player extends BaseEntity {
 
         if (!this.inputEnabled) return;
 
-        if (this.gamepad.left || this.gamepad.leftStick.x < -0.1) {
-            this.body.velocity.x = -this.speed;
-        } else if (this.gamepad.right || this.gamepad.leftStick.x > 0.1) {
-            this.body.velocity.x = this.speed;
-        }
+        const keys = this.keyboardKeys;
 
-        if (this.gamepad.up || this.gamepad.leftStick.y < -0.1) {
-            this.body.velocity.y = -this.speed;
-        }
-        else if (this.gamepad.down || this.gamepad.leftStick.y > 0.1) {
-            this.body.velocity.y = this.speed;
-        }
+        // Movement: gamepad d-pad / left stick OR keyboard. Velocity is *set* (not
+        // accumulated), so native + shimmed input for the same direction don't stack.
+        const left  = this.gamepad.left  || this.gamepad.leftStick.x < -0.1 || (keys && keys.left.isDown);
+        const right = this.gamepad.right || this.gamepad.leftStick.x >  0.1 || (keys && keys.right.isDown);
+        const up    = this.gamepad.up    || this.gamepad.leftStick.y < -0.1 || (keys && keys.up.isDown);
+        const down  = this.gamepad.down  || this.gamepad.leftStick.y >  0.1 || (keys && keys.down.isDown);
 
-        var thumbstickAngle = this.coordinatesToRadians(this.gamepad.rightStick.x, this.gamepad.rightStick.y);
+        if (left) this.body.velocity.x = -this.speed;
+        else if (right) this.body.velocity.x = this.speed;
+
+        if (up) this.body.velocity.y = -this.speed;
+        else if (down) this.body.velocity.y = this.speed;
+
+        // Aim + fire. A right stick (twin-stick) takes precedence; otherwise auto-aim
+        // players (the arcade cabinet has no right stick) lock onto and fire at the
+        // nearest enemy.
+        const thumbstickAngle = this.coordinatesToRadians(this.gamepad.rightStick.x, this.gamepad.rightStick.y);
 
         if (thumbstickAngle !== null) {
             this.rotation = thumbstickAngle;
             this.weapons[this.currentWeapon].fire(this.getRightCenter());
+        } else if (this.autoAim) {
+            const target = this.findNearestBaddie();
+            if (target) {
+                this.rotation = Phaser.Math.Angle.Between(this.x, this.y, target.x, target.y);
+                this.weapons[this.currentWeapon].fire(this.getRightCenter());
+            }
         }
+    }
+
+    // Wire up keyboard movement + auto-aim for this player, alongside its gamepad.
+    // `scheme` 0 → arrow keys, 1+ → WASD, matching the launcher's shim (1st pad →
+    // arrows, 2nd → WASD). Auto-aim/fire stands in for the missing right stick.
+    enableKeyboardControl(scheme = 0) {
+        const keyboard = this.scene.input && this.scene.input.keyboard;
+        if (!keyboard) return;
+
+        this.autoAim = true;
+        this.keyboardKeys = scheme === 0
+            ? keyboard.addKeys({ up: 'UP', down: 'DOWN', left: 'LEFT', right: 'RIGHT' })
+            : keyboard.addKeys({ up: 'W', down: 'S', left: 'A', right: 'D' });
+    }
+
+    findNearestBaddie() {
+        const baddies = this.scene.baddies ? this.scene.baddies.getChildren() : [];
+        let nearest = null;
+        let minDistance = Infinity;
+
+        for (const baddie of baddies) {
+            if (!baddie.active) continue;
+            const distance = Phaser.Math.Distance.Between(this.x, this.y, baddie.x, baddie.y);
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearest = baddie;
+            }
+        }
+
+        return nearest;
     }
 
     // Find and chase the nearest powerup

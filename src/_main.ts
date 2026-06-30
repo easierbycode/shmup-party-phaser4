@@ -852,6 +852,10 @@ class MenuScene extends Phaser.Scene {
         this.players.add(newPlayer);
         this.targets.add(newPlayer);
 
+        // The joined human gets keyboard control + auto-aim too (arrows for the first
+        // to join, WASD for the next), so they can play the demo via the cabinet shim.
+        newPlayer.enableKeyboardControl(Math.max(0, this.joinedPads.size - 1));
+
         // Rumble + on-screen confirmation that a player joined.
         if (pad.vibration && typeof pad.vibration.playEffect === 'function') {
             pad.vibration.playEffect('dual-rumble', {
@@ -1346,10 +1350,16 @@ class GameScene extends Phaser.Scene {
             const player = this.players.contains(objA) ? objA : objB;
             const enemy = player === objA ? objB : objA;
 
+            const playerIndex = this.players.getChildren().indexOf(player);
+
             player.damage(player, { damagePoints: 1 });
 
-            // Update HUD
-            this.hud.events.emit('updatePlayerHealth', this.players.getChildren().indexOf(player), player.health, 3);
+            // Update HUD (index captured before damage; the player may now be gone).
+            this.hud.events.emit('updatePlayerHealth', playerIndex, player.health, 3);
+
+            // damage() may have killed and destroyed the player — bail before
+            // touching its now-null body.
+            if (!player.active || !player.body) return;
 
             // Knockback effect (push the player away from the enemy)
             const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, player.x, player.y);
@@ -1362,6 +1372,7 @@ class GameScene extends Phaser.Scene {
             this.time.addEvent({
                 delay: 1000,
                 callback: () => {
+                    if (!player.active) return;
                     player.clearTint();
                     player.invulnerable = false;
                 }
@@ -1428,6 +1439,10 @@ class GameScene extends Phaser.Scene {
 
         this.players.add(newPlayer);
         this.playersHaveSpawned = true;
+
+        // Keyboard control + auto-aim for the cabinet's gamepad→keyboard shim
+        // (1st player → arrows, 2nd → WASD). Runs alongside native gamepad input.
+        newPlayer.enableKeyboardControl(playerIndex);
 
         // Initialize health display for this player
         this.hud.events.emit('updatePlayerHealth', playerIndex, newPlayer.health, 3);
