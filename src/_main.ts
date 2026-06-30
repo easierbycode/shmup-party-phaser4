@@ -1320,9 +1320,13 @@ class GameScene extends Phaser.Scene {
         // Handle gamepad connections
         this.setupGamepadListeners();
         
-        // Debug mode toggle
+        // Debug mode toggle. `debugGraphic` only exists when physics debug is enabled
+        // (e.g. ?debug=1), so guard against it being undefined — otherwise a stray 'D'
+        // keypress (a gamepad button can be mapped to it) reads .visible of undefined
+        // and throws, breaking input dispatch.
         this.input.keyboard.on('keydown-D', () => {
-            this.physics.world.debugGraphic.visible = !this.physics.world.debugGraphic.visible;
+            const debugGraphic = this.physics.world.debugGraphic;
+            if (debugGraphic) debugGraphic.visible = !debugGraphic.visible;
         });
     }
     
@@ -1377,13 +1381,17 @@ class GameScene extends Phaser.Scene {
     }
     
     createAnimations() {
-        // Animation for wrecking ball powerup
-        this.anims.create({
-            key: 'wreckingBall.default',
-            frames: this.anims.generateFrameNames('wreckingBall'),
-            repeat: -1,
-            frameRate: 12
-        });
+        // Animation for wrecking ball powerup. Animations are global, so guard against
+        // re-creating it — the attract scene also defines it, and create() re-runs on a
+        // level restart; Phaser warns "key already exists" otherwise.
+        if (!this.anims.exists('wreckingBall.default')) {
+            this.anims.create({
+                key: 'wreckingBall.default',
+                frames: this.anims.generateFrameNames('wreckingBall'),
+                repeat: -1,
+                frameRate: 12
+            });
+        }
     }
     
     setupGamepadListeners() {
