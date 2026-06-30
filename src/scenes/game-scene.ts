@@ -26,7 +26,7 @@ export class GameScene extends BaseGameScene {
             'LEVEL UP! SELECT A PERK',
             {
                 fontSize: '32px',
-                fontFamily: 'Arial',
+                fontFamily: 'Orbitron, sans-serif',
                 color: '#ffffff'
             }
         ).setOrigin(0.5);

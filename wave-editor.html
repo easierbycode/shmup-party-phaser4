@@ -5,6 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap" rel="stylesheet">
 </head>
 
 <body>
@@ -145,13 +148,13 @@
 
                 // Wave controls
                 this.waveText = this.scene.add.text(20, height - 140, 'Wave: 1', {
-                    fontFamily: 'Arial',
+                    fontFamily: 'Orbitron, sans-serif',
                     fontSize: '24px',
                     color: '#ffffff'
                 });
 
                 this.enemyCountText = this.scene.add.text(20, height - 110, 'Enemies: 0', {
-                    fontFamily: 'Arial',
+                    fontFamily: 'Orbitron, sans-serif',
                     fontSize: '18px',
                     color: '#ffffff'
                 });
@@ -180,7 +183,7 @@
                 // Enemy type selector
                 const enemyTypeX = width - 300;
                 this.scene.add.text(enemyTypeX, height - 140, 'Enemy Type:', {
-                    fontFamily: 'Arial',
+                    fontFamily: 'Orbitron, sans-serif',
                     fontSize: '18px',
                     color: '#ffffff'
                 });
@@ -204,7 +207,7 @@
                 // Placement mode selector
                 const placementX = width - 600;
                 this.scene.add.text(placementX, height - 140, 'Placement Mode:', {
-                    fontFamily: 'Arial',
+                    fontFamily: 'Orbitron, sans-serif',
                     fontSize: '18px',
                     color: '#ffffff'
                 });
@@ -255,7 +258,7 @@
 
             createButton(x, y, text, callback, width = 130) {
                 const button = this.scene.add.text(x, y, text, {
-                    fontFamily: 'Arial',
+                    fontFamily: 'Orbitron, sans-serif',
                     fontSize: '18px',
                     color: '#ffffff',
                     backgroundColor: '#880000',
