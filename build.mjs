@@ -79,12 +79,15 @@ const indexHtml = `<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sh'M↑ Party</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap" rel="stylesheet">
     <style>
         body {
             -webkit-touch-callout: none;
             -webkit-text-size-adjust: none;
             -webkit-user-select: none;
-            font-family: system-ui, -apple-system, -apple-system-font, 'Segoe UI', 'Roboto', sans-serif;
+            font-family: 'Orbitron', system-ui, -apple-system, -apple-system-font, 'Segoe UI', 'Roboto', sans-serif;
             font-size: 12px;
             height: 100vh;
             margin: 0px;

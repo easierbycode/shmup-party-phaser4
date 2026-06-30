@@ -130,7 +130,20 @@ class BootScene extends Phaser.Scene {
     }
     
     create() {
-        this.scene.start('PreloadScene');
+        // Make sure the Orbitron web font is loaded before any canvas text is
+        // rendered — Phaser rasterizes text once, so text drawn before the font
+        // is ready would be stuck with a fallback face.
+        const start = () => this.scene.start('PreloadScene');
+        const fonts = (document as any).fonts;
+        if (fonts && fonts.load) {
+            Promise.all([
+                fonts.load('400 16px Orbitron'),
+                fonts.load('700 16px Orbitron'),
+                fonts.load('900 16px Orbitron'),
+            ]).then(start).catch(start);
+        } else {
+            start();
+        }
     }
 }
 
@@ -155,14 +168,14 @@ class PreloadScene extends Phaser.Scene {
         
         // Loading text
         let loadingText = this.add.text(width / 2, height / 2 - 20, 'Loading...', {
-            fontFamily: 'Arial',
+            fontFamily: 'Orbitron, sans-serif',
             fontSize: '20px',
             color: '#ffffff'
         }).setOrigin(0.5);
         
         // Percent text
         let percentText = this.add.text(width / 2, height / 2 + 25, '0%', {
-            fontFamily: 'Arial',
+            fontFamily: 'Orbitron, sans-serif',
             fontSize: '18px',
             color: '#ffffff'
         }).setOrigin(0.5);
@@ -353,7 +366,7 @@ function createPerkSelectionCard(scene, perk, x, y, onSelect) {
         .setAlpha(0.18);
 
     const nameText = scene.add.text(0, 38, perk.name.toUpperCase(), {
-        fontFamily: 'Arial Black, Impact, sans-serif',
+        fontFamily: 'Orbitron, sans-serif',
         fontSize: '22px',
         color: '#d8fbff',
         stroke: '#041820',
@@ -365,7 +378,7 @@ function createPerkSelectionCard(scene, perk, x, y, onSelect) {
     }
 
     const descText = scene.add.text(0, 78, perk.description, {
-        fontFamily: 'Arial',
+        fontFamily: 'Orbitron, sans-serif',
         fontSize: '16px',
         color: '#9bcbd7',
         align: 'center',
@@ -738,7 +751,7 @@ class MenuScene extends Phaser.Scene {
             .setDepth(20);
 
         const label = this.add.text(panelCenterX, y, text.toUpperCase(), {
-            fontFamily: 'Arial Black, Impact, sans-serif',
+            fontFamily: 'Orbitron, sans-serif',
             fontSize: '34px',
             fontStyle: 'bold',
             color: '#145a70',
@@ -872,7 +885,7 @@ class MenuScene extends Phaser.Scene {
             this.cameras.main.height * 0.78,
             `PLAYER ${playerNumber} JOINED`,
             {
-                fontFamily: 'Arial Black, Impact, sans-serif',
+                fontFamily: 'Orbitron, sans-serif',
                 fontSize: '40px',
                 color: '#9fefff',
                 stroke: '#041820',
@@ -1016,7 +1029,7 @@ class MenuScene extends Phaser.Scene {
             this.cameras.main.height / 3,
             'LEVEL UP! Choose a perk:',
             {
-                fontFamily: 'Arial',
+                fontFamily: 'Orbitron, sans-serif',
                 fontSize: '36px',
                 color: '#ffffff'
             }
@@ -1097,7 +1110,7 @@ class GameHUD extends Phaser.Scene {
     
     create() {
         this.waveText = this.add.text(this.cameras.main.width / 2, 100, '', {
-            fontFamily: 'Arial',
+            fontFamily: 'Orbitron, sans-serif',
             fontSize: '48px',
             color: '#ffffff',
             stroke: '#000000',
@@ -1168,7 +1181,7 @@ class GameHUD extends Phaser.Scene {
         
         // Player indicator
         this.add.text(x, y, `P${playerIndex + 1}:`, {
-            fontFamily: 'Arial',
+            fontFamily: 'Orbitron, sans-serif',
             fontSize: '20px',
             color: '#ffffff'
         });
@@ -1220,7 +1233,7 @@ class GameHUD extends Phaser.Scene {
             this.cameras.main.height / 3,
             'LEVEL UP! Choose a perk:',
             {
-                fontFamily: 'Arial',
+                fontFamily: 'Orbitron, sans-serif',
                 fontSize: '36px',
                 color: '#ffffff'
             }
