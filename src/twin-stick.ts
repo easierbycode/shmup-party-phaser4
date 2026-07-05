@@ -132,10 +132,16 @@ export function rightStickIsTrustworthy(pad: any): boolean {
 }
 
 // D-pad direction as { x, y } each in { -1, 0, 1 }, across every layout:
-// standard buttons 12-15, the encoded hat on axes[9], and (SNES pads only —
-// they have no analog sticks to false-positive on) digital ±1 hat pairs on
-// axes 0-7.
+// standard buttons 12-15, the encoded hat on axes[9], and (raw non-standard
+// SNES layouts only) digital ±1 hat pairs on axes 0-7.
+//
+// The pair scan must NOT run on standard-mapping pads: the cmg launcher's
+// Twin-Stick patch presents mapping "standard" with the face buttons
+// synthesized onto axes[2]/[3] as an exact-±1 right stick, which the scan
+// would read as a D-pad — making the aim buttons also MOVE the player. A
+// standard-mapping pad's D-pad is always the real buttons 12-15 anyway.
 export function readDpad(pad: any): { x: number; y: number } {
+    const native = (pad && pad.pad) || pad;
     let x = 0;
     let y = 0;
     if (!isSnesHatLayout(pad)) {
@@ -147,7 +153,7 @@ export function readDpad(pad: any): { x: number; y: number } {
     const hat = hatDirection(pad);
     if (hat && (hat.x || hat.y)) return hat;
 
-    if (isSnesPadId(pad && pad.id)) {
+    if (isSnesPadId(pad && pad.id) && !(native && native.mapping === 'standard')) {
         const pairs: Array<[number, number]> = [[0, 1], [2, 3], [4, 5], [6, 7]];
         for (const [xi, yi] of pairs) {
             const vx = axisValue(pad, xi);
