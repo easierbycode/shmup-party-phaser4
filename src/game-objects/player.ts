@@ -7,7 +7,7 @@ import { Bullet, Weapon } from '../weapons/weapon-plugin/index.ts';
 import { BULLET_KILL } from "../weapons/weapon-plugin/events.ts";
 import { consts } from '../weapons/weapon-plugin/index.ts'; // Import consts
 import config from '../config.ts';
-import { faceAim, readDpad, TwinStick } from '../twin-stick.ts';
+import { faceAim, readDpad, rightStickIsTrustworthy, TwinStick } from '../twin-stick.ts';
 
 // BulletImpact class for the Lazer weapon
 class BulletImpact extends Phaser.GameObjects.Sprite {
@@ -222,12 +222,17 @@ export default class Player extends BaseEntity {
         else if (down) this.body.velocity.y = this.speed;
 
         // Aim + fire. A right stick — real, or synthesized by the cmg launcher's
-        // Twin-Stick patch — takes precedence. Without stick signal, Twin-Stick
-        // mode (streamed/standalone runs, where the launcher can't patch the
-        // Gamepad API) aims with the face buttons and auto-fires continuously in
-        // the last aimed direction. Otherwise auto-aim players (the arcade
-        // cabinet has no right stick) lock onto and fire at the nearest enemy.
-        const thumbstickAngle = this.coordinatesToRadians(this.gamepad.rightStick.x, this.gamepad.rightStick.y);
+        // Twin-Stick patch — takes precedence, but only where axes[2]/[3] are
+        // actually a stick: on raw non-standard SNES layouts they can carry the
+        // digital D-pad pair (see rightStickIsTrustworthy). Without stick
+        // signal, Twin-Stick mode (streamed/standalone runs, where the launcher
+        // can't patch the Gamepad API) aims with the face buttons and
+        // auto-fires continuously in the last aimed direction. Otherwise
+        // auto-aim players (the arcade cabinet has no right stick) lock onto
+        // and fire at the nearest enemy.
+        const thumbstickAngle = rightStickIsTrustworthy(this.gamepad)
+            ? this.coordinatesToRadians(this.gamepad.rightStick.x, this.gamepad.rightStick.y)
+            : null;
         const faceAimVec = TwinStick.enabled ? faceAim(this.gamepad) : { x: 0, y: 0 };
         const faceAimAngle = this.coordinatesToRadians(faceAimVec.x, faceAimVec.y);
 

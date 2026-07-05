@@ -108,14 +108,41 @@ function isDigitalValue(v: number): boolean {
     return Math.abs(v) < 0.01 || Math.abs(Math.abs(v) - 1) < 0.01;
 }
 
+// True when this is the SNES pad's Nintendo-HID-order layout: non-standard
+// mapping with ~10 axes and the POV hat on axes[9]. There the raw 12-15
+// button slots are NOT a D-pad — 12/13 are the (physically absent)
+// Home/Capture bits and some units report ZR at 15 — so D-pad reads must come
+// from the hat alone or holding ZR would strafe the player right.
+function isSnesHatLayout(pad: any): boolean {
+    return isSnesPadId(pad && pad.id) &&
+        pad.mapping !== 'standard' &&
+        (pad.axes ? pad.axes.length : 0) > 9;
+}
+
+// True when Phaser's rightStick (axes[2]/[3]) can be trusted as an aim stick:
+// a standard-mapping pad (including the cmg launcher's synthesized Twin-Stick
+// pads), or any non-SNES pad. On raw non-standard SNES layouts those axes can
+// carry the digital D-pad hat pair, which would read as full stick deflection
+// and turn movement into aim/fire — and the pad has no real right stick to
+// lose by ignoring them.
+export function rightStickIsTrustworthy(pad: any): boolean {
+    const native = (pad && pad.pad) || pad;
+    if (native && native.mapping === 'standard') return true;
+    return !isSnesPadId(pad && pad.id);
+}
+
 // D-pad direction as { x, y } each in { -1, 0, 1 }, across every layout:
 // standard buttons 12-15, the encoded hat on axes[9], and (SNES pads only —
 // they have no analog sticks to false-positive on) digital ±1 hat pairs on
 // axes 0-7.
 export function readDpad(pad: any): { x: number; y: number } {
-    let x = pressed(pad, 14) ? -1 : pressed(pad, 15) ? 1 : 0;
-    let y = pressed(pad, 12) ? -1 : pressed(pad, 13) ? 1 : 0;
-    if (x || y) return { x, y };
+    let x = 0;
+    let y = 0;
+    if (!isSnesHatLayout(pad)) {
+        x = pressed(pad, 14) ? -1 : pressed(pad, 15) ? 1 : 0;
+        y = pressed(pad, 12) ? -1 : pressed(pad, 13) ? 1 : 0;
+        if (x || y) return { x, y };
+    }
 
     const hat = hatDirection(pad);
     if (hat && (hat.x || hat.y)) return hat;

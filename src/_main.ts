@@ -8,6 +8,7 @@ import EvilBrain from './game-objects/evil-brain.ts';
 import config from './config.ts';
 
 import { FOLLOW_LERP_X, FOLLOW_LERP_Y, HEIGHT, WIDTH, ZOOM_LERP, ZOOM_MAX, ZOOM_MIN } from './constants.ts';
+import { initTwinStick } from './twin-stick.ts';
 
 
 // Wave and level management
@@ -1748,3 +1749,9 @@ config.scene = [
 
 // Create the game instance
 const game = new Phaser.Game(config);
+
+// Advertise Twin-Stick mode (default ON) to a mounting cmg launcher and follow
+// its Guide-OSD toggle. Streamed/standalone runs synthesize the mode in Player
+// via readDpad()/faceAim(); inside the launcher's same-origin cache the pad
+// arrives with the sticks already synthesized.
+initTwinStick(true);
