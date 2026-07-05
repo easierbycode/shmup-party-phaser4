@@ -9,6 +9,7 @@ import config from './config.ts';
 
 import { FOLLOW_LERP_X, FOLLOW_LERP_Y, HEIGHT, WIDTH, ZOOM_LERP, ZOOM_MAX, ZOOM_MIN } from './constants.ts';
 import { initTwinStick } from './twin-stick.ts';
+import { initTouchControls } from './touch-controls.ts';
 
 
 // Wave and level management
@@ -1755,3 +1756,8 @@ const game = new Phaser.Game(config);
 // via readDpad()/faceAim(); inside the launcher's same-origin cache the pad
 // arrives with the sticks already synthesized.
 initTwinStick(true);
+
+// Touch counterpart of Twin-Stick mode: dynamic analogs on the left (move)
+// and right (aim) screen halves, toggled from the launcher's Guide OSD via
+// { type: 'cmg-touchcontrols-set', value }. Off until the launcher says so.
+initTouchControls();

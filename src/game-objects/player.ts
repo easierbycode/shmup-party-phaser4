@@ -8,6 +8,7 @@ import { BULLET_KILL } from "../weapons/weapon-plugin/events.ts";
 import { consts } from '../weapons/weapon-plugin/index.ts'; // Import consts
 import config from '../config.ts';
 import { faceAim, readDpad, rightStickIsTrustworthy, TwinStick } from '../twin-stick.ts';
+import { touchAim, touchMove, TouchControls } from '../touch-controls.ts';
 
 // BulletImpact class for the Lazer weapon
 class BulletImpact extends Phaser.GameObjects.Sprite {
@@ -205,15 +206,21 @@ export default class Player extends BaseEntity {
 
         const keys = this.keyboardKeys;
 
-        // Movement: gamepad d-pad / left stick OR keyboard. Velocity is *set* (not
-        // accumulated), so native + shimmed input for the same direction don't stack.
-        // readDpad() covers the layouts Phaser's named getters miss (POV hat on
-        // axes[9], digital hat pairs on SNES pads) — see twin-stick.ts.
+        // Movement: gamepad d-pad / left stick, keyboard, OR the left-half
+        // dynamic touch analog (Twin-Stick touch mode; drives the scene's
+        // first player only, so a second pad player isn't yanked around by
+        // the phone screen). Velocity is *set* (not accumulated), so native +
+        // shimmed input for the same direction don't stack. readDpad() covers
+        // the layouts Phaser's named getters miss (POV hat on axes[9],
+        // digital hat pairs on SNES pads) — see twin-stick.ts.
         const dpad  = readDpad(this.gamepad);
-        const left  = this.gamepad.left  || dpad.x < 0 || this.gamepad.leftStick.x < -0.1 || (keys && keys.left.isDown);
-        const right = this.gamepad.right || dpad.x > 0 || this.gamepad.leftStick.x >  0.1 || (keys && keys.right.isDown);
-        const up    = this.gamepad.up    || dpad.y < 0 || this.gamepad.leftStick.y < -0.1 || (keys && keys.up.isDown);
-        const down  = this.gamepad.down  || dpad.y > 0 || this.gamepad.leftStick.y >  0.1 || (keys && keys.down.isDown);
+        const isTouchPlayer = TouchControls.enabled &&
+            this.scene.players?.getChildren?.()[0] === this;
+        const tm = isTouchPlayer ? touchMove() : { x: 0, y: 0 };
+        const left  = this.gamepad.left  || dpad.x < 0 || this.gamepad.leftStick.x < -0.1 || tm.x < -0.1 || (keys && keys.left.isDown);
+        const right = this.gamepad.right || dpad.x > 0 || this.gamepad.leftStick.x >  0.1 || tm.x >  0.1 || (keys && keys.right.isDown);
+        const up    = this.gamepad.up    || dpad.y < 0 || this.gamepad.leftStick.y < -0.1 || tm.y < -0.1 || (keys && keys.up.isDown);
+        const down  = this.gamepad.down  || dpad.y > 0 || this.gamepad.leftStick.y >  0.1 || tm.y >  0.1 || (keys && keys.down.isDown);
 
         if (left) this.body.velocity.x = -this.speed;
         else if (right) this.body.velocity.x = this.speed;
@@ -233,11 +240,19 @@ export default class Player extends BaseEntity {
         const thumbstickAngle = rightStickIsTrustworthy(this.gamepad)
             ? this.coordinatesToRadians(this.gamepad.rightStick.x, this.gamepad.rightStick.y)
             : null;
+        // Right-half dynamic touch analog: aims and fires while touched, like
+        // a right stick (see touch-controls.ts).
+        const ta = isTouchPlayer ? touchAim() : { x: 0, y: 0 };
+        const touchAimAngle = this.coordinatesToRadians(ta.x, ta.y);
         const faceAimVec = TwinStick.enabled ? faceAim(this.gamepad) : { x: 0, y: 0 };
         const faceAimAngle = this.coordinatesToRadians(faceAimVec.x, faceAimVec.y);
 
         if (thumbstickAngle !== null) {
             this.rotation = thumbstickAngle;
+            this.weapons[this.currentWeapon].fire(this.getRightCenter());
+        } else if (touchAimAngle !== null) {
+            this.rotation = touchAimAngle;
+            this.lastFaceAimAngle = touchAimAngle;
             this.weapons[this.currentWeapon].fire(this.getRightCenter());
         } else if (TwinStick.enabled && (faceAimAngle !== null || this.lastFaceAimAngle !== null)) {
             const aimAngle = faceAimAngle !== null ? faceAimAngle : this.lastFaceAimAngle!;
