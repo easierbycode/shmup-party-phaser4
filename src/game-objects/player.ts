@@ -7,6 +7,7 @@ import { Bullet, Weapon } from '../weapons/weapon-plugin/index.ts';
 import { BULLET_KILL } from "../weapons/weapon-plugin/events.ts";
 import { consts } from '../weapons/weapon-plugin/index.ts'; // Import consts
 import config from '../config.ts';
+import { faceAim, readDpad, TwinStick } from '../twin-stick.ts';
 
 // BulletImpact class for the Lazer weapon
 class BulletImpact extends Phaser.GameObjects.Sprite {
@@ -110,6 +111,9 @@ export default class Player extends BaseEntity {
     // unset and behave exactly as before. See enableKeyboardControl().
     keyboardKeys = null;
     autoAim: boolean = false;
+    // Last Twin-Stick face-button aim angle, so the weapon keeps auto-firing in
+    // the aimed direction between presses (null until the player first aims).
+    lastFaceAimAngle: number | null = null;
 
     constructor(
         gamepad,
@@ -203,10 +207,13 @@ export default class Player extends BaseEntity {
 
         // Movement: gamepad d-pad / left stick OR keyboard. Velocity is *set* (not
         // accumulated), so native + shimmed input for the same direction don't stack.
-        const left  = this.gamepad.left  || this.gamepad.leftStick.x < -0.1 || (keys && keys.left.isDown);
-        const right = this.gamepad.right || this.gamepad.leftStick.x >  0.1 || (keys && keys.right.isDown);
-        const up    = this.gamepad.up    || this.gamepad.leftStick.y < -0.1 || (keys && keys.up.isDown);
-        const down  = this.gamepad.down  || this.gamepad.leftStick.y >  0.1 || (keys && keys.down.isDown);
+        // readDpad() covers the layouts Phaser's named getters miss (POV hat on
+        // axes[9], digital hat pairs on SNES pads) — see twin-stick.ts.
+        const dpad  = readDpad(this.gamepad);
+        const left  = this.gamepad.left  || dpad.x < 0 || this.gamepad.leftStick.x < -0.1 || (keys && keys.left.isDown);
+        const right = this.gamepad.right || dpad.x > 0 || this.gamepad.leftStick.x >  0.1 || (keys && keys.right.isDown);
+        const up    = this.gamepad.up    || dpad.y < 0 || this.gamepad.leftStick.y < -0.1 || (keys && keys.up.isDown);
+        const down  = this.gamepad.down  || dpad.y > 0 || this.gamepad.leftStick.y >  0.1 || (keys && keys.down.isDown);
 
         if (left) this.body.velocity.x = -this.speed;
         else if (right) this.body.velocity.x = this.speed;
@@ -214,13 +221,23 @@ export default class Player extends BaseEntity {
         if (up) this.body.velocity.y = -this.speed;
         else if (down) this.body.velocity.y = this.speed;
 
-        // Aim + fire. A right stick (twin-stick) takes precedence; otherwise auto-aim
-        // players (the arcade cabinet has no right stick) lock onto and fire at the
-        // nearest enemy.
+        // Aim + fire. A right stick — real, or synthesized by the cmg launcher's
+        // Twin-Stick patch — takes precedence. Without stick signal, Twin-Stick
+        // mode (streamed/standalone runs, where the launcher can't patch the
+        // Gamepad API) aims with the face buttons and auto-fires continuously in
+        // the last aimed direction. Otherwise auto-aim players (the arcade
+        // cabinet has no right stick) lock onto and fire at the nearest enemy.
         const thumbstickAngle = this.coordinatesToRadians(this.gamepad.rightStick.x, this.gamepad.rightStick.y);
+        const faceAimVec = TwinStick.enabled ? faceAim(this.gamepad) : { x: 0, y: 0 };
+        const faceAimAngle = this.coordinatesToRadians(faceAimVec.x, faceAimVec.y);
 
         if (thumbstickAngle !== null) {
             this.rotation = thumbstickAngle;
+            this.weapons[this.currentWeapon].fire(this.getRightCenter());
+        } else if (TwinStick.enabled && (faceAimAngle !== null || this.lastFaceAimAngle !== null)) {
+            const aimAngle = faceAimAngle !== null ? faceAimAngle : this.lastFaceAimAngle!;
+            this.lastFaceAimAngle = aimAngle;
+            this.rotation = aimAngle;
             this.weapons[this.currentWeapon].fire(this.getRightCenter());
         } else if (this.autoAim) {
             const target = this.findNearestBaddie();
