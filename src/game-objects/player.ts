@@ -251,8 +251,11 @@ export default class Player extends BaseEntity {
             this.rotation = thumbstickAngle;
             this.weapons[this.currentWeapon].fire(this.getRightCenter());
         } else if (touchAimAngle !== null) {
+            // Right-stick semantics: aim and fire only while touched. Do NOT
+            // seed lastFaceAimAngle here — that would hand the release off to
+            // the face-button branch below, which auto-fires forever in the
+            // last aimed direction.
             this.rotation = touchAimAngle;
-            this.lastFaceAimAngle = touchAimAngle;
             this.weapons[this.currentWeapon].fire(this.getRightCenter());
         } else if (TwinStick.enabled && (faceAimAngle !== null || this.lastFaceAimAngle !== null)) {
             const aimAngle = faceAimAngle !== null ? faceAimAngle : this.lastFaceAimAngle!;
