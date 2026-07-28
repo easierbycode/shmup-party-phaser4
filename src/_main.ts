@@ -1436,7 +1436,9 @@ class GameScene extends Phaser.Scene {
         if (!this.anims.exists('wreckingBall.default')) {
             this.anims.create({
                 key: 'wreckingBall.default',
-                frames: this.anims.generateFrameNames('wreckingBall'),
+                // generateFrameNames() defaults to a single frame on a
+                // spritesheet texture — number the six chomp frames explicitly.
+                frames: this.anims.generateFrameNumbers('wreckingBall', { start: 0, end: 5 }),
                 repeat: -1,
                 frameRate: 12
             });
@@ -1570,13 +1572,9 @@ class GameScene extends Phaser.Scene {
                     
                     baddie.damage(baddie, bullet);
                 });
-                
-                // Wrecking ball vs enemies
-                if (player.wreckingBall) {
-                    this.physics.overlap(this.baddies, player.wreckingBall, (baddie, ball) => {
-                        baddie.damage(baddie, { damagePoints: 300 });
-                    });
-                }
+
+                // The orbiting chomp ball does its own sweep from
+                // Player.preUpdate, so it needs nothing here.
             });
             
             // Update camera position to follow midpoint between players

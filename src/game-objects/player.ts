@@ -85,6 +85,18 @@ class Lazer extends Weapon {
     }
 }
 
+// Chomp-ball ("wreckingBall") powerup: the ball orbits the player and chews
+// through whatever it sweeps past. An enemy is only ever caught when the swing
+// lines up with it, so the ball reaches a ring of |orbit - distance| <= its
+// bite. The orbit sits just outside the player's own sprite (72px) so that ring
+// starts at the player's feet — enemies that close to melee range are inside a
+// wider orbit and would never be touched.
+const CHOMP_BALL_RADIUS = 72;         // orbit distance from the player, px
+const CHOMP_BALL_SPIN = 3.6;          // radians/sec
+const CHOMP_BALL_DURATION = 15000;    // ms the powerup lasts
+const CHOMP_BALL_DAMAGE = 300;        // per hit — one-shots zombies and aliens
+const CHOMP_BALL_HIT_COOLDOWN = 250;  // ms before the same enemy can be hit again
+
 // Player class
 export default class Player extends BaseEntity {
 
@@ -104,6 +116,12 @@ export default class Player extends BaseEntity {
     perks = [];
     isDemoMode: boolean = false;
     wreckingBall = null;
+    // Orbit state for the chomp ball. wreckingBallHits maps an enemy to the
+    // timestamp of its last hit so a single pass doesn't apply damage on every
+    // frame of contact.
+    wreckingBallAngle = 0;
+    wreckingBallTimer = null;
+    wreckingBallHits = new WeakMap();
     fireblast = null;
     experience = 0;
     availablePerks = ['damage', 'speed', 'fireRate', 'health', 'shield'];
@@ -196,6 +214,10 @@ export default class Player extends BaseEntity {
         super.preUpdate(time, delta);
 
         this.body.stop();
+
+        // Runs ahead of the demo-mode / inputEnabled early returns so the ball
+        // keeps orbiting (and killing) in attract mode and while input is off.
+        this.updateWreckingBall(time, delta);
 
         if (this.isDemoMode) {
             this.chasePowerups();
@@ -529,57 +551,121 @@ export default class Player extends BaseEntity {
     }
 
     activateWreckingBall() {
-        // Remove any existing wrecking ball
-        if (this.wreckingBall) {
-            this.wreckingBall.destroy();
-        }
-        
-        // Create the wrecking ball
-        this.wreckingBall = this.scene.add.sprite(this.x, this.y - 120, 'wreckingBall');
-        
+        // Re-collecting refreshes the duration instead of stacking a second ball
+        // (and drops the old expiry timer, which would otherwise cut the new one
+        // short).
+        this.deactivateWreckingBall();
+
+        this.wreckingBallAngle = 0;
+        this.wreckingBallHits = new WeakMap();
+
+        this.wreckingBall = this.scene.add.sprite(
+            this.x + CHOMP_BALL_RADIUS,
+            this.y,
+            'wreckingBall'
+        );
+
         // Make sure the animation exists
         if (!this.scene.anims.exists('wreckingBall.default')) {
             this.scene.anims.create({
                 key: 'wreckingBall.default',
-                frames: this.scene.anims.generateFrameNumbers('wreckingBall', { start: 0 }),
-                frameRate: 10,
+                frames: this.scene.anims.generateFrameNumbers('wreckingBall', { start: 0, end: 5 }),
+                frameRate: 12,
                 repeat: -1
             });
         }
-        
+
         this.wreckingBall.play('wreckingBall.default');
+        // Just under the player (depth 10) so the orbit reads as circling them.
         this.wreckingBall.setDepth(9);
 
-        // Add physics body to wrecking ball
-        this.scene.physics.world.enableBody(this.wreckingBall);
-        this.wreckingBall.body.setCircle(this.wreckingBall.width / 2);
-        
         // Visual feedback
         this.setTint(0xffaa00);
 
-        // Make wrecking ball follow player
-        const updateBall = () => {
-            if (this.wreckingBall && this.active) {
-                this.wreckingBall.x = this.x;
-                this.wreckingBall.y = this.y - 120;
-            }
-        };
-        
-        // Set up update loop for the wrecking ball
-        this.scene.events.on('update', updateBall);
+        this.wreckingBallTimer = this.scene.time.delayedCall(
+            CHOMP_BALL_DURATION,
+            () => this.deactivateWreckingBall()
+        );
+    }
 
-        // Set timer to remove wrecking ball
-        this.scene.time.addEvent({
-            delay: 15000,
-            callback: () => {
-                if (this.wreckingBall) {
-                    this.wreckingBall.destroy();
-                    this.wreckingBall = null;
-                    this.clearTint();
-                    this.scene.events.off('update', updateBall);
-                }
+    deactivateWreckingBall() {
+        if (this.wreckingBallTimer) {
+            this.wreckingBallTimer.remove();
+            this.wreckingBallTimer = null;
+        }
+
+        if (this.wreckingBall) {
+            this.wreckingBall.destroy();
+            this.wreckingBall = null;
+            this.clearTint();
+        }
+    }
+
+    // Sweep the ball one step around its orbit and damage anything it passes
+    // through. Called from preUpdate, which runs before the physics step and the
+    // scene's update(), so the ball is always where it looks like it is.
+    updateWreckingBall(time, delta) {
+        if (!this.wreckingBall) return;
+
+        if (!this.active) {
+            this.deactivateWreckingBall();
+            return;
+        }
+
+        this.wreckingBallAngle = Phaser.Math.Angle.Wrap(
+            this.wreckingBallAngle + CHOMP_BALL_SPIN * (delta / 1000)
+        );
+
+        const ball = this.wreckingBall;
+        ball.x = this.x + Math.cos(this.wreckingBallAngle) * CHOMP_BALL_RADIUS;
+        ball.y = this.y + Math.sin(this.wreckingBallAngle) * CHOMP_BALL_RADIUS;
+        // Bite into the direction of travel rather than trailing sideways.
+        ball.rotation = this.wreckingBallAngle + Math.PI / 2;
+
+        this.wreckingBallVsBaddies(time, ball);
+    }
+
+    wreckingBallVsBaddies(time, ball) {
+        const baddies = this.scene.baddies ? this.scene.baddies.getChildren() : [];
+        if (baddies.length === 0) return;
+
+        const ballRadius = ball.displayWidth / 2;
+
+        // Iterate a copy: damage() can kill the baddie, which removes it from
+        // the group mid-loop.
+        for (const baddie of [...baddies]) {
+            if (!baddie.active || baddie.blinking) continue;
+
+            // Bite on sprite overlap, not on the arcade body — the enemy bodies
+            // are a small fraction of their art (a zombie is 72px of sprite over
+            // an 18px body), so a body-sized reach would have the ball visibly
+            // pass through enemies without touching them.
+            const reach = ballRadius +
+                Math.max(baddie.displayWidth, baddie.displayHeight) / 2;
+
+            if (Phaser.Math.Distance.Between(ball.x, ball.y, baddie.x, baddie.y) > reach) continue;
+
+            const lastHit = this.wreckingBallHits.get(baddie);
+            if (lastHit !== undefined && time - lastHit < CHOMP_BALL_HIT_COOLDOWN) continue;
+
+            this.wreckingBallHits.set(baddie, time);
+
+            if (this.scene.bloodSplatters) {
+                baddie.damage(baddie, { damagePoints: CHOMP_BALL_DAMAGE });
+            } else {
+                // Attract mode has no bloodSplatters group, so kill() would throw
+                // on the splatter it spawns — destroy outright, as the attract
+                // scene does for its own bullet kills.
+                baddie.onDestroy();
+                baddie.destroy();
             }
-        });
+        }
+    }
+
+    kill() {
+        // The ball is a plain scene sprite, so it would outlive the player.
+        this.deactivateWreckingBall();
+        super.kill();
     }
 
     collectExperience(amount) {
