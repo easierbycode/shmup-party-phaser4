@@ -1326,7 +1326,11 @@ class GameScene extends Phaser.Scene {
         
         // Create game groups
         this.baddies = this.add.group();
-        this.players = this.physics.add.group();
+        // collideWorldBounds must be set here, not just in the Player constructor:
+        // an Arcade physics group re-applies its defaults to every body it adds,
+        // so a group without this option silently clears the flag Player set and
+        // players can walk off the map.
+        this.players = this.physics.add.group({ collideWorldBounds: true });
         this.powerups = this.physics.add.group(); // physics group so player-vs-powerup overlap can collide
         this.bloodSplatters = this.add.group({ classType: BloodSplatter });
 
